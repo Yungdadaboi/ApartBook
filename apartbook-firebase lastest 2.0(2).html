@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+  <title>ApartBook</title>
+  <meta name="theme-color" content="#7c3aed"/>
+  <link rel="manifest" href="manifest.json"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-title" content="ApartBook"/>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:#0a0a0f;font-family:system-ui,-apple-system,sans-serif}
+    input,select,textarea,button{font-family:inherit}
+    ::-webkit-scrollbar{width:5px;height:5px}
+    ::-webkit-scrollbar-track{background:#12121a}
+    ::-webkit-scrollbar-thumb{background:#3a3a55;border-radius:4px}
+    input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.6)}
+    table{border-collapse:collapse;width:100%}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<!-- jsPDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<!-- Paystack -->
+<script src="https://js.paystack.co/v1/inline.js"></script>
+<!-- React -->
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel" data-presets="react">
+// ══════════════════════════════════════════════════
+//  STEP 1 — Paste YOUR Firebase config here
+// ══════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey:            "AIzaSyA_5sCpE-1J7zM0Q2LB7463TTf5_L4qLZ0",
+  authDomain:        "apartbook-lodge.firebaseapp.com",
+  projectId:         "apartbook-lodge",
+  storageBucket:     "apartbook-lodge.firebasestorage.app",
+  messagingSenderId: "162419795284",
+  appId:             "1:162419795284:web:72554612a25f9f29bad4c1",
+  measurementId:     "G-8FGEY56NRD"
+};
+
+// ══════════════════════════════════════════════════
+//  STEP 2 — Paste YOUR Paystack PUBLIC key here
+//  Get it from: dashboard.paystack.com → Settings → API
+// ══════════════════════════════════════════════════
+const PAYSTACK_KEY = "REPLACE_WITH_YOUR_PAYSTACK_PUBLIC_KEY";
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+const TS   = firebase.firestore.FieldValue.serverTimestamp;
+
+const { useState, useEffect, useMemo } = React;
+
+// ── Theme ──
+const T = {
+  bg:"#0a0a0f", sur:"#12121a", s2:"#1a1a26",
+  brd:"#2a2a3d", brd2:"#3a3a55",
+  pur:"#7c3aed", purL:"#9d65f5", purDim:"#2d1b69", purBg:"#1a1040",
+  txt:"#e8e6f0", sub:"#8b86a8", mute:"#5a5475",
+  grn:"#22c55e", red:"#ef4444", amb:"#f59e0b",
+};
+
+const APT_COLORS = [
+  {clr:"#7c3aed",bg:"#1a1040"},{clr:"#9d65f5",bg:"#1e1245"},
+  {clr:"#6d28d9",bg:"#150e38"},{clr:"#a78bfa",bg:"#201450"},
+  {clr:"#8b5cf6",bg:"#1c1144"},{clr:"#c4b5fd",bg:"#251860"},
+];
+
+const STATUSES = ["Confirmed","Pending","Cancelled","Checked-out"];
+const SS = {
+  "Confirmed":   {bg:"#0d2d1a",c:"#22c55e"},
+  "Pending":     {bg:"#2d1f0d",c:"#f59e0b"},
+  "Cancelled":   {bg:"#2d0d0d",c:"#ef4444"},
+  "Checked-out": {bg:"#1a1040",c:"#a78bfa"},
+};
+const PC = {Paid:"#22c55e",Partial:"#f59e0b",Unpaid:"#ef4444"};
+const MN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const ROLES = ["admin","manager","staff"];
+const RC = {admin:"#22c55e",manager:"#f59e0b",staff:"#9d65f5"};
+
+// ── Helpers ──
+const fmt  = n => "₦" + Number(n).toLocaleString();
+const nts  = (a,b) => Math.max(0,(new Date(b)-new Date(a))/86400000);
+const ini  = n => (n||"?").split(" ").map(x=>x[0]).join("").slice(0,2).toUpperCase();
+const tod  = () => new Date().toISOString().split("T")[0];
+const col  = idx => APT_COLORS[idx % APT_COLORS.length] || APT_COLORS[0];
+function fmtWA(p=""){
+  const d=p.replace(/\D/g,"");
+  return d.startsWith("0")?"234"+d.slice(1):d.startsWith("234")?d:d;
+}
+
+// ── Shared styles ──
+const SI={width:"100%",boxSizing:"border-box",background:T.s2,border:`1px solid ${T.brd2}`,borderRadius:8,color:T.txt,padding:"8px 12px",fontSize:13,marginBottom:10,outline:"none"};
+const LB={fontSize:12,color:T.sub,display:"block",marginBottom:4};
+const BT={background:"none",border:`1px solid ${T.brd2}`,borderRadius:8,padding:"7px 16px",cursor:"pointer",fontSize:12,color:T.txt};
+const BP={background:T.pur,border:"none",borderRadius:8,padding:"9px 22px",cursor:"pointer",fontSize:13,color:"#fff",fontWeight:500};
+const BD={background:"none",border:`1px solid ${T.red}55`,borderRadius:8,padding:"7px 16px",cursor:"pointer",fontSize:12,color:T.red};
+const BG={background:"#0d2d1a",border:`1px solid #22c55e55`,borderRadius:8,padding:"9px 18px",cursor:"pointer",fontSize:13,color:"#22c55e",display:"flex",alignItems:"center",gap:7,fontWeight:500};
+const BW={background:"#0a2d1a",border:`1px solid #25d36655`,borderRadius:8,padding:"9px 18px",cursor:"pointer",fontSize:13,color:"#25d366",display:"flex",alignItems:"center",gap:7,fontWeight:500};
+const CD={background:T.sur,border:`1px solid ${T.brd}`,borderRadius:12,padding:"18px 20px",marginBottom:16};
+const MD={position:"fixed",inset:0,background:"rgba(0,0,0,.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:16};
+const MB={background:T.sur,border:`1px solid ${T.brd}`,borderRadius:14,padding:24,maxWidth:480,width:"100%",maxHeight:"90vh",overflowY:"auto"};
+const TH={textAlign:"left",padding:"10px 12px",borderBottom:`1px solid ${T.brd}`,color:T.sub,fontSize:11,fontWeight:500,textTransform:"uppercase",letterSpacing:".04em",whiteSpace:"nowrap"};
+const TD={padding:"11px 12px",borderBottom:`1px solid ${T.brd}`,fontSize:13,verticalAlign:"middle"};
+
+// ── Logo ──
+function Logo({sz=36}){
+  return(
+    <svg width={sz} height={sz} viewBox="0 0 36 36" fill="none">
+      <rect width="36" height="36" rx="9" fill="#1a1040"/>
+      <rect x="1" y="1" width="34" height="34" rx="8.5" stroke="#7c3aed" strokeOpacity=".6"/>
+      <rect x="8" y="16" width="20" height="14" rx="1.5" fill="#2d1b69"/>
+      <rect x="8" y="16" width="20" height="14" rx="1.5" stroke="#7c3aed" strokeWidth="1"/>
+      <path d="M6 17L18 7L30 17" stroke="#9d65f5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <rect x="14.5" y="22" width="7" height="8" rx="1" fill="#7c3aed" opacity=".7"/>
+      <rect x="9.5" y="19" width="4" height="3.5" rx=".7" fill="#c4b5fd" opacity=".6"/>
+      <rect x="22.5" y="19" width="4" height="3.5" rx=".7" fill="#c4b5fd" opacity=".6"/>
+      <circle cx="18" cy="11.5" r="1.2" fill="#c4b5fd"/>
+    </svg>
+  );
+}
+
+function Badge({s}){
+  const c=SS[s]||{bg:T.s2,c:T.sub};
+  return <span style={{background:c.bg,color:c.c,borderRadius:6,padding:"3px 10px",fontSize:11,fontWeight:500}}>{s}</span>;
+}
+function RBadge({role}){
+  const c=RC[role]||T.sub;
+  return <span style={{background:c+"22",color:c,borderRadius:6,padding:"3px 10px",fontSize:11,fontWeight:500,border:`1px solid ${c}44`,textTransform:"capitalize"}}>{role}</span>;
+}
+function UChip({unit}){
+  if(!unit)return null;
+  const c=col(unit.colorIdx);
+  return <span style={{background:c.bg,color:c.clr,borderRadius:6,padding:"3px 9px",fontSize:11,fontWeight:500,border:`1px solid ${c.clr}33`}}>{unit.name}</span>;
+}
+function DR({label,value}){
+  return(
+    <div style={{display:"flex",borderBottom:`1px solid ${T.brd}`,padding:"9px 0",fontSize:13}}>
+      <div style={{color:T.sub,width:115,flexShrink:0}}>{label}</div>
+      <div style={{flex:1}}>{value}</div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════
+//  LOGIN
+// ══════════════════════════════════════════════════
+function Login(){
+  const [email,setEmail]=useState("");
+  const [pass,setPass]=useState("");
+  const [err,setErr]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [show,setShow]=useState(false);
+
+  async function signIn(){
+    if(!email||!pass){setErr("Please enter email and password.");return;}
+    setBusy(true);setErr("");
+    try{
+      const cred=await auth.signInWithEmailAndPassword(email.trim(),pass);
+      await db.collection("audit_log").add({
+        userId:cred.user.uid,email:cred.user.email,
+        action:"LOGIN",timestamp:TS(),device:navigator.userAgent.slice(0,100),
+      });
+    }catch(e){
+      const c=e.code||"";
+      setErr(c.includes("user-not-found")||c.includes("wrong-password")||c.includes("invalid-credential")
+        ?"Invalid email or password.":"Error: "+e.message);
+    }
+    setBusy(false);
+  }
+
+  return(
+    <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",padding:20,overflow:"hidden",position:"relative"}}>
+      <div style={{position:"fixed",top:"-15%",left:"50%",transform:"translateX(-50%)",width:600,height:600,borderRadius:"50%",background:"radial-gradient(circle,#7c3aed1a 0%,transparent 70%)",pointerEvents:"none"}}/>
+      <div style={{width:"100%",maxWidth:400,position:"relative"}}>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",marginBottom:32}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
+            <Logo sz={46}/>
+            <span style={{fontSize:28,fontWeight:800,background:"linear-gradient(135deg,#c4b5fd,#7c3aed)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>ApartBook</span>
+          </div>
+          <div style={{fontSize:13,color:T.sub}}>Property Management System</div>
+        </div>
+        <div style={{background:T.sur,border:`1px solid ${T.brd}`,borderRadius:16,padding:"30px 28px",boxShadow:"0 24px 64px rgba(124,58,237,.2)"}}>
+          <div style={{fontSize:20,fontWeight:700,marginBottom:4}}>Welcome back</div>
+          <div style={{fontSize:13,color:T.sub,marginBottom:22}}>Sign in to manage your properties</div>
+          <label style={LB}>Email address</label>
+          <input style={SI} type="email" placeholder="admin@yourdomain.com" value={email}
+            onChange={e=>{setEmail(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&signIn()}/>
+          <label style={LB}>Password</label>
+          <div style={{position:"relative",marginBottom:6}}>
+            <input type={show?"text":"password"} style={{...SI,marginBottom:0,paddingRight:46}}
+              placeholder="Your password" value={pass}
+              onChange={e=>{setPass(e.target.value);setErr("");}} onKeyDown={e=>e.key==="Enter"&&signIn()}/>
+            <button onClick={()=>setShow(s=>!s)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:T.sub,cursor:"pointer",fontSize:12}}>{show?"Hide":"Show"}</button>
+          </div>
+          {err&&<div style={{fontSize:12,color:T.red,margin:"8px 0 4px"}}>{err}</div>}
+          <button style={{...BP,width:"100%",marginTop:16,padding:"12px",fontSize:14,background:"linear-gradient(135deg,#7c3aed,#5b21b6)",boxShadow:"0 4px 24px rgba(124,58,237,.45)",opacity:busy?.7:1}}
+            onClick={signIn} disabled={busy}>{busy?"Signing in…":"Sign In →"}</button>
+          <p style={{fontSize:12,color:T.mute,textAlign:"center",marginTop:18,lineHeight:1.6}}>
+            Contact your administrator to create or reset your account.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════
+//  MAIN APP
+// ══════════════════════════════════════════════════
+const BLANK={guest:"",email:"",phone:"",unitId:"",checkIn:"",checkOut:"",status:"Pending",payment:"Unpaid",notes:""};
+const DEFAULT_UNITS=[
+  {id:"A1",name:"Garden Suite",    floor:"Ground",beds:1,price:45000, colorIdx:0},
+  {id:"A2",name:"City View Flat",  floor:"1st",   beds:2,price:65000, colorIdx:1},
+  {id:"A3",name:"Executive Studio",floor:"2nd",   beds:1,price:55000, colorIdx:2},
+  {id:"A4",name:"Family Apartment",floor:"2nd",   beds:3,price:85000, colorIdx:3},
+  {id:"A5",name:"Deluxe Loft",     floor:"3rd",   beds:2,price:75000, colorIdx:4},
+  {id:"A6",name:"Penthouse",       floor:"Top",   beds:4,price:150000,colorIdx:5},
+];
+
+function Main({user}){
+  const [profile,setProfile]=useState(null);
+  const [tab,setTab]=useState("Dashboard");
+  const [properties,setProperties]=useState([]);
+  const [selProp,setSelProp]=useState(null);
+  const [bookings,setBookings]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [form,setForm]=useState(BLANK);
+  const [fErr,setFErr]=useState(""); const [fOk,setFOk]=useState("");
+  const [search,setSearch]=useState(""); const [fStat,setFStat]=useState("All");
+  const [sel,setSel]=useState(null);
+  const [editMode,setEditMode]=useState(false); const [editForm,setEditForm]=useState(null);
+  const [cal,setCal]=useState(new Date());
+  const [delId,setDelId]=useState(null);
+  const [auditLog,setAuditLog]=useState([]);
+  const [staff,setStaff]=useState([]);
+  const [propForm,setPropForm]=useState({name:"",address:"",description:""});
+  const [propOk,setPropOk]=useState(""); const [propErr,setPropErr]=useState("");
+  const [editingProp,setEditingProp]=useState(null);
+  const [unitForm,setUnitForm]=useState({name:"",floor:"",beds:1,price:""});
+  const [reportMonth,setReportMonth]=useState(new Date().getMonth());
+  const [reportYear,setReportYear]=useState(new Date().getFullYear());
+  const today=tod();
+
+  // ── User profile / role ──
+  useEffect(()=>{
+    if(!user)return;
+    const ref=db.collection("users").doc(user.uid);
+    const unsub=ref.onSnapshot(async snap=>{
+      if(snap.exists){setProfile(snap.data());}
+      else{
+        const all=await db.collection("users").limit(1).get();
+        const role=all.empty?"admin":"staff";
+        const data={email:user.email,name:user.email.split("@")[0],role,createdAt:TS()};
+        await ref.set(data);setProfile(data);
+      }
+    });
+    return unsub;
+  },[user]);
+
+  // ── Properties ──
+  useEffect(()=>{
+    const unsub=db.collection("properties").orderBy("createdAt","asc").onSnapshot(async snap=>{
+      const props=snap.docs.map(d=>({...d.data(),_id:d.id}));
+      if(props.length===0){
+        const def={name:"Main Property",address:"Enter your property address",description:"Default property",units:DEFAULT_UNITS,createdAt:TS()};
+        const r=await db.collection("properties").add(def);
+        setProperties([{...def,_id:r.id}]);setSelProp(r.id);
+      }else{
+        setProperties(props);
+        setSelProp(p=>p||(props[0]?._id));
+      }
+    });
+    return unsub;
+  },[]);
+
+  // ── Bookings (by property) ──
+  useEffect(()=>{
+    if(!selProp){setLoading(false);return;}
+    const unsub=db.collection("bookings").where("propertyId","==",selProp)
+      .orderBy("created","desc").onSnapshot(snap=>{
+        setBookings(snap.docs.map(d=>({...d.data(),_id:d.id})));
+        setLoading(false);
+      },err=>{
+        // Index not yet built — fallback without orderBy
+        db.collection("bookings").where("propertyId","==",selProp).get().then(snap=>{
+          setBookings(snap.docs.map(d=>({...d.data(),_id:d.id})).sort((a,b)=>b.created?.seconds-a.created?.seconds));
+          setLoading(false);
+        });
+      });
+    return unsub;
+  },[selProp]);
+
+  // ── Audit log ──
+  useEffect(()=>{
+    if(tab!=="Audit")return;
+    const unsub=db.collection("audit_log").orderBy("timestamp","desc").limit(200)
+      .onSnapshot(snap=>setAuditLog(snap.docs.map(d=>({...d.data(),_id:d.id}))));
+    return unsub;
+  },[tab]);
+
+  // ── Staff ──
+  useEffect(()=>{
+    if(tab!=="Staff")return;
+    const unsub=db.collection("users").onSnapshot(snap=>setStaff(snap.docs.map(d=>({...d.data(),_id:d.id}))));
+    return unsub;
+  },[tab]);
+
+  async function logout(){
+    try{await db.collection("audit_log").add({userId:user.uid,email:user.email,action:"LOGOUT",timestamp:TS(),device:navigator.userAgent.slice(0,100)});}catch(_){}
+    auth.signOut();
+  }
+
+  const curProp=properties.find(p=>p._id===selProp);
+  const units=curProp?.units||[];
+  const unit=id=>units.find(u=>u.id===id)||null;
+
+  const activeToday=bookings.filter(b=>b.checkIn<=today&&b.checkOut>today&&b.status==="Confirmed");
+  const occupied=new Set(activeToday.map(b=>b.unitId));
+  const revenue=bookings.filter(b=>b.payment==="Paid"||b.payment==="Partial")
+    .reduce((s,b)=>s+(unit(b.unitId)?.price||0)*nts(b.checkIn,b.checkOut)*(b.payment==="Paid"?1:.5),0);
+
+  const filtered=bookings.filter(b=>{
+    const q=search.toLowerCase();
+    return(!q||b.guest?.toLowerCase().includes(q)||b.email?.toLowerCase().includes(q)||unit(b.unitId)?.name?.toLowerCase().includes(q))&&(fStat==="All"||b.status===fStat);
+  });
+
+  const customers=useMemo(()=>{
+    const m={};
+    bookings.forEach(b=>{
+      if(!m[b.email])m[b.email]={guest:b.guest,email:b.email,phone:b.phone,bookings:[]};
+      m[b.email].bookings.push(b);
+    });
+    return Object.values(m).sort((a,b)=>b.bookings.length-a.bookings.length);
+  },[bookings]);
+
+  const isAdmin=profile?.role==="admin";
+  const isMgr=profile?.role==="manager"||isAdmin;
+
+  // ── Add booking ──
+  async function addBooking(){
+    setFErr("");setFOk("");
+    if(!form.guest.trim()){setFErr("Guest name is required.");return;}
+    if(!form.email.trim()){setFErr("Email is required.");return;}
+    if(!form.unitId){setFErr("Please select a unit.");return;}
+    if(!form.checkIn||!form.checkOut){setFErr("Dates required.");return;}
+    if(form.checkOut<=form.checkIn){setFErr("Check-out must be after check-in.");return;}
+    try{
+      await db.collection("bookings").add({...form,propertyId:selProp,created:TS(),createdBy:user.email});
+      const u=unit(form.unitId);
+      const total=nts(form.checkIn,form.checkOut)*(u?.price||0);
+      const msg=encodeURIComponent(`Hello ${form.guest}! 🏠\n\nYour booking at *${curProp?.name}* is confirmed.\n\n📍 Unit: ${u?.name}\n📅 Check-in: ${form.checkIn}\n📅 Check-out: ${form.checkOut}\n🌙 Nights: ${nts(form.checkIn,form.checkOut)}\n💰 Total: ${fmt(total)}\n\nThank you for choosing ApartBook! 🙏`);
+      setForm(BLANK);setFOk("Reservation saved!");setTimeout(()=>setFOk(""),3500);
+      const phone=fmtWA(form.phone||"");
+      if(phone.length>=10&&confirm("Send WhatsApp confirmation to guest?")){
+        window.open(`https://wa.me/${phone}?text=${msg}`,"_blank");
+      }
+    }catch(e){setFErr("Error: "+e.message);}
+  }
+
+  async function deleteBooking(id){
+    try{await db.collection("bookings").doc(id).delete();}catch(_){}
+    setSel(null);setDelId(null);
+  }
+
+  async function saveEdit(){
+    if(!editForm.guest||!editForm.checkIn||!editForm.checkOut||editForm.checkOut<=editForm.checkIn)return;
+    const{_id,...data}=editForm;
+    try{await db.collection("bookings").doc(_id).update({...data,updatedBy:user.email,updatedAt:TS()});setSel(editForm);setEditMode(false);}
+    catch(e){alert("Error: "+e.message);}
+  }
+
+  async function quickStatus(b,status){
+    try{await db.collection("bookings").doc(b._id).update({status,updatedBy:user.email,updatedAt:TS()});}catch(_){}
+    if(sel?._id===b._id)setSel(s=>({...s,status}));
+  }
+
+  // ── Paystack ──
+  function payWithPaystack(b){
+    const u=unit(b.unitId);
+    const total=nts(b.checkIn,b.checkOut)*(u?.price||0);
+    if(!window.PaystackPop){alert("Paystack not loaded.");return;}
+    if(PAYSTACK_KEY.includes("REPLACE")){alert("Add your Paystack public key first.");return;}
+    const handler=window.PaystackPop.setup({
+      key:PAYSTACK_KEY,email:b.email,amount:total*100,currency:"NGN",
+      ref:"APT-"+Date.now(),
+      metadata:{guest:b.guest,unit:u?.name,property:curProp?.name},
+      onClose:()=>{},
+      callback:async response=>{
+        await db.collection("bookings").doc(b._id).update({payment:"Paid",paystackRef:response.reference,updatedBy:user.email,updatedAt:TS()});
+        setSel(s=>s?({...s,payment:"Paid",paystackRef:response.reference}):s);
+        alert("✅ Payment successful!\nReference: "+response.reference);
+      }
+    });
+    handler.openIframe();
+  }
+
+  // ── WhatsApp ──
+  function sendWhatsApp(b){
+    const u=unit(b.unitId);
+    const total=nts(b.checkIn,b.checkOut)*(u?.price||0);
+    const msg=encodeURIComponent(`Hello ${b.guest}! 🏠\n\nBooking confirmed at *${curProp?.name}*.\n\n📍 Unit: ${u?.name||"—"}\n📅 Check-in: ${b.checkIn}\n📅 Check-out: ${b.checkOut}\n🌙 Nights: ${nts(b.checkIn,b.checkOut)}\n💰 Total: ${fmt(total)}\n💳 Payment: ${b.payment}\n\nThank you! 🙏`);
+    const phone=fmtWA(b.phone||"");
+    if(phone.length<10){alert("No valid phone number for this guest.");return;}
+    window.open(`https://wa.me/${phone}?text=${msg}`,"_blank");
+  }
+
+  // ── PDF Report ──
+  function generatePDF(){
+    const{jsPDF}=window.jspdf;
+    if(!jsPDF){alert("PDF library not loaded.");return;}
+    const doc=new jsPDF();
+    const mb=bookings.filter(b=>{const d=new Date(b.checkIn);return d.getMonth()===reportMonth&&d.getFullYear()===reportYear;});
+    const rev=mb.filter(b=>b.payment==="Paid").reduce((s,b)=>s+(unit(b.unitId)?.price||0)*nts(b.checkIn,b.checkOut),0);
+    // Header
+    doc.setFillColor(26,16,64);doc.rect(0,0,210,42,"F");
+    doc.setTextColor(196,181,253);doc.setFontSize(22);doc.setFont("helvetica","bold");doc.text("ApartBook",14,18);
+    doc.setFontSize(11);doc.setFont("helvetica","normal");doc.text("Monthly Revenue Report",14,28);
+    doc.setFontSize(10);doc.text(`${MN[reportMonth]} ${reportYear}  ·  ${curProp?.name||""}`,14,38);
+    doc.setTextColor(120,120,120);doc.setFontSize(9);
+    doc.text(`Generated: ${new Date().toLocaleString()}  by ${user.email}`,14,52);
+    // Summary
+    doc.setFontSize(11);doc.setFont("helvetica","bold");doc.setTextColor(40,40,40);doc.text("Monthly Summary",14,64);
+    doc.autoTable({startY:68,head:[["Metric","Value"]],theme:"grid",
+      body:[["Total Bookings",mb.length],["Confirmed",mb.filter(b=>b.status==="Confirmed").length],
+            ["Checked-out",mb.filter(b=>b.status==="Checked-out").length],
+            ["Cancelled",mb.filter(b=>b.status==="Cancelled").length],["Revenue Collected",fmt(rev)]],
+      headStyles:{fillColor:[124,58,237],textColor:255,fontStyle:"bold"},styles:{fontSize:11},
+      columnStyles:{0:{cellWidth:120},1:{cellWidth:60}},
+    });
+    // Bookings table
+    const y2=doc.lastAutoTable.finalY+12;
+    doc.setFont("helvetica","bold");doc.setFontSize(11);doc.setTextColor(40,40,40);doc.text("Booking Details",14,y2);
+    doc.autoTable({startY:y2+4,theme:"striped",
+      head:[["Guest","Unit","Check-in","Check-out","Nights","Status","Payment","Amount"]],
+      body:mb.length>0?mb.map(b=>[b.guest,unit(b.unitId)?.name||"—",b.checkIn,b.checkOut,
+        nts(b.checkIn,b.checkOut)+"",b.status,b.payment,
+        fmt((unit(b.unitId)?.price||0)*nts(b.checkIn,b.checkOut))])
+        :[["No bookings this month","","","","","","",""]],
+      headStyles:{fillColor:[124,58,237],textColor:255,fontSize:9},styles:{fontSize:8},
+    });
+    const pg=doc.internal.getNumberOfPages();
+    for(let i=1;i<=pg;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(150,150,150);doc.text(`ApartBook · ${curProp?.name} · Page ${i}/${pg}`,14,287);}
+    doc.save(`ApartBook-${MN[reportMonth]}-${reportYear}.pdf`);
+  }
+
+  // ── Add property ──
+  async function addProperty(){
+    setPropErr("");setPropOk("");
+    if(!propForm.name.trim()){setPropErr("Property name required.");return;}
+    try{
+      await db.collection("properties").add({...propForm,units:[],createdAt:TS(),createdBy:user.email});
+      setPropForm({name:"",address:"",description:""});setPropOk("Property added!");setTimeout(()=>setPropOk(""),3000);
+    }catch(e){setPropErr("Error: "+e.message);}
+  }
+
+  async function addUnit(propId){
+    if(!unitForm.name||!unitForm.price){alert("Unit name and price are required.");return;}
+    const prop=properties.find(p=>p._id===propId);if(!prop)return;
+    const nu={id:"U"+Date.now(),name:unitForm.name,floor:unitForm.floor||"",
+      beds:Number(unitForm.beds)||1,price:Number(unitForm.price)||0,
+      colorIdx:(prop.units?.length||0)%APT_COLORS.length};
+    await db.collection("properties").doc(propId).update({units:[...(prop.units||[]),nu]});
+    setUnitForm({name:"",floor:"",beds:1,price:""});setEditingProp(null);
+  }
+
+  async function deleteUnit(propId,unitId){
+    const prop=properties.find(p=>p._id===propId);if(!prop)return;
+    await db.collection("properties").doc(propId).update({units:(prop.units||[]).filter(u=>u.id!==unitId)});
+  }
+
+  async function updateRole(uid,role){await db.collection("users").doc(uid).update({role});}
+
+  // Calendar
+  const calFirst=new Date(cal.getFullYear(),cal.getMonth(),1).getDay();
+  const calDays=new Date(cal.getFullYear(),cal.getMonth()+1,0).getDate();
+  function calBks(day){
+    const ds=`${cal.getFullYear()}-${String(cal.getMonth()+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+    return bookings.filter(b=>b.checkIn<=ds&&b.checkOut>ds&&b.status!=="Cancelled");
+  }
+
+  const TABS=[
+    {name:"Dashboard",show:true},{name:"Properties",show:isAdmin},
+    {name:"New Booking",show:isMgr},{name:"Bookings",show:true},
+    {name:"Customers",show:isMgr},{name:"Calendar",show:true},
+    {name:"Reports",show:isMgr},{name:"Staff",show:isAdmin},{name:"Audit",show:isAdmin},
+  ].filter(t=>t.show);
+
+  if(!profile||loading)return(
+    <div style={{minHeight:"100vh",background:T.bg,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:14}}>
+      <Logo sz={52}/><div style={{color:T.sub,fontSize:14}}>Loading ApartBook…</div>
+    </div>
+  );
+
+  return(
+    <div style={{fontFamily:"system-ui,sans-serif",color:T.txt,minHeight:"100vh",background:T.bg}}>
+
+      {/* ── HEADER ── */}
+      <div style={{background:T.sur,borderBottom:`1px solid ${T.brd}`,padding:"0 10px",display:"flex",alignItems:"center",overflowX:"auto",position:"sticky",top:0,zIndex:50}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginRight:10,padding:"10px 0",flexShrink:0}}>
+          <Logo sz={30}/>
+          <span style={{fontSize:14,fontWeight:700,background:"linear-gradient(135deg,#c4b5fd,#7c3aed)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",whiteSpace:"nowrap"}}>ApartBook</span>
+        </div>
+        {properties.length>1&&(
+          <select value={selProp||""} onChange={e=>setSelProp(e.target.value)}
+            style={{...SI,width:"auto",marginBottom:0,fontSize:11,padding:"4px 8px",marginRight:6,flexShrink:0}}>
+            {properties.map(p=><option key={p._id} value={p._id}>{p.name}</option>)}
+          </select>
+        )}
+        {properties.length===1&&curProp&&<span style={{fontSize:10,color:T.sub,marginRight:6,flexShrink:0,whiteSpace:"nowrap",borderRight:`1px solid ${T.brd}`,paddingRight:6}}>{curProp.name}</span>}
+        {TABS.map(t=>(
+          <button key={t.name} onClick={()=>setTab(t.name)}
+            style={{background:"none",border:"none",borderBottom:tab===t.name?`2px solid ${T.purL}`:"2px solid transparent",
+              padding:"12px 8px 10px",fontSize:11,cursor:"pointer",color:tab===t.name?T.purL:T.sub,fontWeight:tab===t.name?500:400,whiteSpace:"nowrap",flexShrink:0}}>
+            {t.name}
+          </button>
+        ))}
+        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:7,flexShrink:0,paddingLeft:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:6,border:`1px solid ${T.brd2}`,borderRadius:8,padding:"4px 9px 4px 6px",flexShrink:0}}>
+            <div style={{width:24,height:24,borderRadius:"50%",background:T.purDim,border:`1.5px solid ${T.pur}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:T.purL}}>{ini(user.email)}</div>
+            <div>
+              <div style={{fontSize:10,color:T.txt,maxWidth:70,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{user.email.split("@")[0]}</div>
+              <div style={{fontSize:9,color:RC[profile?.role]||T.sub,textTransform:"capitalize"}}>{profile?.role}</div>
+            </div>
+          </div>
+          <button onClick={logout} style={{display:"flex",alignItems:"center",gap:5,background:"#2d0d0d",border:`1px solid ${T.red}55`,borderRadius:8,padding:"6px 11px",cursor:"pointer",color:T.red,fontSize:11,fontWeight:500,flexShrink:0,whiteSpace:"nowrap"}}>
+            <span>⏻</span><span>Sign out</span>
+          </button>
+        </div>
+      </div>
+
+      <div style={{padding:"18px 14px",maxWidth:980,margin:"0 auto"}}>
+
+        {/* ════ DASHBOARD ════ */}
+        {tab==="Dashboard"&&(<>
+          <div style={{fontSize:18,fontWeight:600,marginBottom:14}}>Overview <span style={{color:T.sub,fontSize:13,fontWeight:400}}>— {today}</span></div>
+          <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap"}}>
+            {[{l:"Total bookings",v:bookings.length,c:T.purL},{l:"Occupied units",v:`${occupied.size}/${units.length}`,c:T.grn},
+              {l:"Check-ins today",v:bookings.filter(b=>b.checkIn===today&&b.status!=="Cancelled").length,c:T.amb},
+              {l:"Check-outs today",v:bookings.filter(b=>b.checkOut===today&&b.status!=="Cancelled").length,c:"#60a5fa"},
+              {l:"Est. revenue",v:fmt(Math.round(revenue)),c:T.purL}].map(c=>(
+              <div key={c.l} style={{background:T.sur,border:`1px solid ${T.brd}`,borderTop:`3px solid ${c.c}44`,borderRadius:12,padding:"12px 14px",flex:1,minWidth:110}}>
+                <div style={{fontSize:11,color:T.sub,marginBottom:3}}>{c.l}</div>
+                <div style={{fontSize:20,fontWeight:700,color:c.c}}>{c.v}</div>
+              </div>
+            ))}
+          </div>
+          <div style={CD}>
+            <div style={{fontWeight:600,marginBottom:12,fontSize:14}}>Unit Status — {curProp?.name}</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:10}}>
+              {units.map(u=>{
+                const c=col(u.colorIdx);const occ=occupied.has(u.id);
+                const cur=bookings.find(b=>b.unitId===u.id&&b.checkIn<=today&&b.checkOut>today&&b.status==="Confirmed");
+                return(
+                  <div key={u.id} style={{border:`1px solid ${occ?c.clr+"55":T.brd}`,borderRadius:10,padding:"11px 13px",background:occ?c.bg:T.s2}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <span style={{fontWeight:500,fontSize:13,color:occ?c.clr:T.txt}}>{u.name}</span>
+                      <span style={{fontSize:11,fontWeight:500,color:occ?c.clr:T.sub,background:occ?c.bg:T.sur,border:`1px solid ${occ?c.clr+"44":T.brd}`,borderRadius:5,padding:"2px 7px"}}>{occ?"Occupied":"Available"}</span>
+                    </div>
+                    <div style={{fontSize:11,color:T.sub,marginTop:4}}>{u.floor&&u.floor+" · "}{u.beds} bed{u.beds>1?"s":""} · {fmt(u.price)}/night</div>
+                    {cur&&<div style={{fontSize:11,color:c.clr,marginTop:5}}>Guest: {cur.guest} · out {cur.checkOut}</div>}
+                  </div>
+                );
+              })}
+              {units.length===0&&<div style={{color:T.sub,fontSize:13}}>No units yet. Go to Properties to add units.</div>}
+            </div>
+          </div>
+          <div style={CD}>
+            <div style={{fontWeight:600,marginBottom:12,fontSize:14}}>Upcoming Confirmed Check-ins</div>
+            {bookings.filter(b=>b.checkIn>=today&&b.status==="Confirmed").slice(0,5).map(b=>{
+              const u=unit(b.unitId);const c=u?col(u.colorIdx):APT_COLORS[0];
+              return(
+                <div key={b._id} onClick={()=>{setSel(b);setTab("Bookings");}}
+                  style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:`1px solid ${T.brd}`,cursor:"pointer"}}>
+                  <div style={{width:34,height:34,borderRadius:"50%",background:c.bg,border:`1px solid ${c.clr}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:600,color:c.clr,flexShrink:0}}>{ini(b.guest)}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:13,fontWeight:500}}>{b.guest}</div>
+                    <div style={{fontSize:11,color:T.sub}}>{u?.name||"—"} · {b.checkIn} → {b.checkOut} · {nts(b.checkIn,b.checkOut)} nights</div>
+                  </div>
+                  <Badge s={b.status}/>
+                </div>
+              );
+            })}
+            {bookings.filter(b=>b.checkIn>=today&&b.status==="Confirmed").length===0&&<div style={{color:T.sub,fontSize:13}}>No upcoming confirmed check-ins.</div>}
+          </div>
+        </>)}
+
+        {/* ════ PROPERTIES (admin) ════ */}
+        {tab==="Properties"&&isAdmin&&(<>
+          <div style={{fontSize:18,fontWeight:600,marginBottom:14}}>Properties Management</div>
+          <div style={CD}>
+            <div style={{fontWeight:600,fontSize:14,marginBottom:12}}>Add New Property</div>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <div style={{flex:1,minWidth:150}}><label style={LB}>Property name *</label><input style={SI} value={propForm.name} onChange={e=>setPropForm(f=>({...f,name:e.target.value}))} placeholder="e.g. Ocean View Apartments"/></div>
+              <div style={{flex:1,minWidth:150}}><label style={LB}>Address</label><input style={SI} value={propForm.address} onChange={e=>setPropForm(f=>({...f,address:e.target.value}))} placeholder="Full address"/></div>
+            </div>
+            <label style={LB}>Description</label>
+            <textarea style={{...SI,height:58,resize:"vertical"}} value={propForm.description} onChange={e=>setPropForm(f=>({...f,description:e.target.value}))} placeholder="Brief description…"/>
+            {propErr&&<div style={{fontSize:12,color:T.red,marginBottom:8}}>{propErr}</div>}
+            {propOk&&<div style={{fontSize:12,color:T.grn,marginBottom:8}}>{propOk}</div>}
+            <button style={BP} onClick={addProperty}>Add Property</button>
+          </div>
+          {properties.map(p=>(
+            <div key={p._id} style={{...CD,borderColor:p._id===selProp?`${T.pur}55`:T.brd}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12,flexWrap:"wrap",gap:8}}>
+                <div>
+                  <div style={{fontWeight:600,fontSize:15}}>{p.name}</div>
+                  <div style={{fontSize:12,color:T.sub,marginTop:2}}>{p.address}</div>
+                </div>
+                <div style={{display:"flex",gap:8}}>
+                  {p._id!==selProp?<button style={BT} onClick={()=>setSelProp(p._id)}>Set Active</button>
+                    :<span style={{fontSize:11,color:T.grn,padding:"6px 12px",border:`1px solid ${T.grn}44`,borderRadius:8}}>✓ Active</span>}
+                </div>
+              </div>
+              <div style={{fontWeight:500,fontSize:13,marginBottom:8}}>Units ({p.units?.length||0})</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(195px,1fr))",gap:8,marginBottom:10}}>
+                {(p.units||[]).map(u=>{
+                  const c=col(u.colorIdx);
+                  return(
+                    <div key={u.id} style={{background:c.bg,border:`1px solid ${c.clr}33`,borderRadius:8,padding:"10px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <div>
+                        <div style={{fontSize:12,fontWeight:500,color:c.clr}}>{u.name}</div>
+                        <div style={{fontSize:10,color:T.sub}}>{u.floor&&u.floor+" · "}{u.beds} bed · {fmt(u.price)}/night</div>
+                      </div>
+                      <button onClick={()=>deleteUnit(p._id,u.id)} style={{background:"none",border:"none",color:T.red,cursor:"pointer",fontSize:18,padding:"0 4px",lineHeight:1}}>×</button>
+                    </div>
+                  );
+                })}
+              </div>
+              {editingProp===p._id?(
+                <div style={{background:T.s2,borderRadius:8,padding:"14px"}}>
+                  <div style={{fontWeight:500,fontSize:13,marginBottom:8,color:T.txt}}>Add Unit</div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    <div style={{flex:2,minWidth:120}}><label style={LB}>Unit name *</label><input style={SI} value={unitForm.name} onChange={e=>setUnitForm(f=>({...f,name:e.target.value}))} placeholder="Suite 101"/></div>
+                    <div style={{flex:1,minWidth:80}}><label style={LB}>Floor</label><input style={SI} value={unitForm.floor} onChange={e=>setUnitForm(f=>({...f,floor:e.target.value}))} placeholder="Ground"/></div>
+                    <div style={{flex:1,minWidth:60}}><label style={LB}>Beds</label><input type="number" min="1" style={SI} value={unitForm.beds} onChange={e=>setUnitForm(f=>({...f,beds:e.target.value}))}/></div>
+                    <div style={{flex:1,minWidth:110}}><label style={LB}>Price/night (₦)*</label><input type="number" style={SI} value={unitForm.price} onChange={e=>setUnitForm(f=>({...f,price:e.target.value}))} placeholder="50000"/></div>
+                  </div>
+                  <div style={{display:"flex",gap:8}}>
+                    <button style={BP} onClick={()=>addUnit(p._id)}>Add Unit</button>
+                    <button style={BT} onClick={()=>setEditingProp(null)}>Cancel</button>
+                  </div>
+                </div>
+              ):<button style={BT} onClick={()=>setEditingProp(p._id)}>+ Add Unit</button>}
+            </div>
+          ))}
+        </>)}
+
+        {/* ════ NEW BOOKING ════ */}
+        {tab==="New Booking"&&isMgr&&(<>
+          <div style={{fontSize:18,fontWeight:600,marginBottom:14}}>New Reservation — {curProp?.name}</div>
+          <div style={CD}>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <div style={{flex:1,minWidth:140}}><label style={LB}>Guest name *</label><input style={SI} value={form.guest} onChange={e=>setForm(f=>({...f,guest:e.target.value}))} placeholder="Full name"/></div>
+              <div style={{flex:1,minWidth:140}}><label style={LB}>Email *</label><input type="email" style={SI} value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} placeholder="guest@email.com"/></div>
+            </div>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <div style={{flex:1,minWidth:140}}><label style={LB}>Phone (WhatsApp) 📱</label><input style={SI} value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value}))} placeholder="0801-234-5678"/></div>
+              <div style={{flex:1,minWidth:140}}><label style={LB}>Unit *</label>
+                <select style={SI} value={form.unitId} onChange={e=>setForm(f=>({...f,unitId:e.target.value}))}>
+                  <option value="">— Select unit —</option>
+                  {units.map(u=><option key={u.id} value={u.id}>{u.name} — {fmt(u.price)}/night{occupied.has(u.id)?" ⚠ occupied":""}</option>)}
+                </select>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <div style={{flex:1,minWidth:140}}><label style={LB}>Check-in *</label><input type="date" style={SI} value={form.checkIn} onChange={e=>setForm(f=>({...f,checkIn:e.target.value}))}/></div>
+              <div style={{flex:1,minWidth:140}}><label style={LB}>Check-out *</label><input type="date" style={SI} value={form.checkOut} onChange={e=>setForm(f=>({...f,checkOut:e.target.value}))}/></div>
+            </div>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <div style={{flex:1,minWidth:140}}><label style={LB}>Status</label><select style={SI} value={form.status} onChange={e=>setForm(f=>({...f,status:e.target.value}))}>{STATUSES.map(x=><option key={x}>{x}</option>)}</select></div>
+              <div style={{flex:1,minWidth:140}}><label style={LB}>Payment</label><select style={SI} value={form.payment} onChange={e=>setForm(f=>({...f,payment:e.target.value}))}>{["Paid","Partial","Unpaid"].map(x=><option key={x}>{x}</option>)}</select></div>
+            </div>
+            <label style={LB}>Special notes</label>
+            <textarea style={{...SI,height:68,resize:"vertical"}} value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} placeholder="Special requests…"/>
+            {form.unitId&&form.checkIn&&form.checkOut&&form.checkOut>form.checkIn&&(()=>{
+              const u=unit(form.unitId);const total=nts(form.checkIn,form.checkOut)*(u?.price||0);
+              return <div style={{background:T.purBg,border:`1px solid ${T.pur}33`,borderRadius:8,padding:"10px 14px",marginBottom:12,fontSize:13}}>
+                <span style={{color:T.sub}}>Estimated total: </span>
+                <span style={{fontWeight:600,color:T.purL}}>{fmt(total)}</span>
+                <span style={{color:T.sub}}> ({nts(form.checkIn,form.checkOut)} nights × {fmt(u?.price||0)})</span>
+              </div>;
+            })()}
+            {fErr&&<div style={{fontSize:13,color:T.red,marginBottom:8}}>{fErr}</div>}
+            {fOk&&<div style={{fontSize:13,color:T.grn,marginBottom:8}}>{fOk}</div>}
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <button style={BP} onClick={addBooking}>Save Reservation</button>
+              <button style={BT} onClick={()=>setForm(BLANK)}>Clear</button>
+            </div>
+            <div style={{fontSize:11,color:T.mute,marginTop:10}}>💬 After saving, you'll be prompted to send a WhatsApp confirmation to the guest.</div>
+          </div>
+        </>)}
+
+        {/* ════ BOOKINGS ════ */}
+        {tab==="Bookings"&&(<>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,flexWrap:"wrap",gap:8}}>
+            <div style={{fontSize:18,fontWeight:600}}>All Bookings <span style={{color:T.sub,fontSize:13,fontWeight:400}}>({filtered.length})</span></div>
+            {isMgr&&<button style={BP} onClick={()=>setTab("New Booking")}>+ New Booking</button>}
+          </div>
+          <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+            <input placeholder="Search guest, email, unit…" value={search} onChange={e=>setSearch(e.target.value)} style={{...SI,flex:1,minWidth:180,marginBottom:0}}/>
+            <select value={fStat} onChange={e=>setFStat(e.target.value)} style={{...SI,minWidth:130,marginBottom:0}}>
+              <option value="All">All statuses</option>
+              {STATUSES.map(x=><option key={x}>{x}</option>)}
+            </select>
+          </div>
+          <div style={{overflowX:"auto",border:`1px solid ${T.brd}`,borderRadius:12}}>
+            <table>
+              <thead style={{background:T.s2}}><tr>{["Guest","Unit","Check-in","Check-out","Nights","Status","Payment",""].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
+              <tbody>
+                {filtered.length===0&&<tr><td colSpan={8} style={{...TD,textAlign:"center",color:T.sub,padding:24}}>No bookings found.</td></tr>}
+                {filtered.map(b=>{
+                  const u=unit(b.unitId);const c=u?col(u.colorIdx):APT_COLORS[0];
+                  return(
+                    <tr key={b._id} style={{cursor:"pointer"}} onClick={()=>setSel(b)}>
+                      <td style={TD}>
+                        <div style={{display:"flex",alignItems:"center",gap:8}}>
+                          <div style={{width:30,height:30,borderRadius:"50%",background:c.bg,border:`1px solid ${c.clr}44`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:600,color:c.clr,flexShrink:0}}>{ini(b.guest)}</div>
+                          <div><div style={{fontWeight:500}}>{b.guest}</div><div style={{fontSize:11,color:T.sub}}>{b.email}</div></div>
+                        </div>
+                      </td>
+                      <td style={TD}><UChip unit={u}/></td>
+                      <td style={TD}>{b.checkIn}</td><td style={TD}>{b.checkOut}</td>
+                      <td style={TD}>{nts(b.checkIn,b.checkOut)}</td>
+                      <td style={TD}><Badge s={b.status}/></td>
+                      <td style={TD}><span style={{color:PC[b.payment],fontSize:12,fontWeight:500}}>{b.payment}</span></td>
+                      <td style={TD}><button style={BT} onClick={e=>{e.stopPropagation();setSel(b);}}>View</button></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>)}
+
+        {/* ════ CUSTOMERS ════ */}
+        {tab==="Customers"&&isMgr&&(<>
+          <div style={{fontSize:18,fontWeight:600,marginBottom:14}}>Customer Records <span style={{color:T.sub,fontSize:13,fontWeight:400}}>({customers.length})</span></div>
+          {customers.length===0&&<div style={{...CD,color:T.sub}}>No customers yet.</div>}
+          {customers.map(c=>{
+            const spent=c.bookings.filter(b=>b.payment==="Paid").reduce((s,b)=>s+nts(b.checkIn,b.checkOut)*(unit(b.unitId)?.price||0),0);
+            return(
+              <div key={c.email} style={CD}>
+                <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10,flexWrap:"wrap"}}>
+                  <div style={{width:42,height:42,borderRadius:"50%",background:T.purDim,border:`1.5px solid ${T.pur}44`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:600,fontSize:14,color:T.purL,flexShrink:0}}>{ini(c.guest)}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:500}}>{c.guest}</div>
+                    <div style={{fontSize:12,color:T.sub}}>{c.email} {c.phone&&`· ${c.phone}`}</div>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontSize:12,color:T.sub}}>{c.bookings.length} booking{c.bookings.length!==1?"s":""}</div>
+                    {spent>0&&<div style={{fontSize:12,color:T.grn,fontWeight:500}}>{fmt(spent)} paid</div>}
+                  </div>
+                </div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>
+                  {c.bookings.map(b=>(
+                    <div key={b._id} onClick={()=>{setSel(b);setTab("Bookings");}} style={{display:"flex",alignItems:"center",gap:5,fontSize:11,background:T.s2,borderRadius:8,padding:"5px 10px",cursor:"pointer",border:`1px solid ${T.brd}`}}>
+                      <UChip unit={unit(b.unitId)}/><span style={{color:T.sub}}>{b.checkIn}–{b.checkOut}</span><Badge s={b.status}/>
+                    </div>
+                  ))}
+                </div>
+                {c.phone&&<button style={{...BW,fontSize:11}} onClick={()=>window.open(`https://wa.me/${fmtWA(c.phone)}`,"_blank")}>
+                  <span>💬</span><span>WhatsApp {c.guest.split(" ")[0]}</span>
+                </button>}
+              </div>
+            );
+          })}
+        </>)}
+
+        {/* ════ CALENDAR ════ */}
+        {tab==="Calendar"&&(<>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+            <button style={BT} onClick={()=>setCal(d=>new Date(d.getFullYear(),d.getMonth()-1,1))}>← Prev</button>
+            <div style={{fontSize:18,fontWeight:600}}>{MN[cal.getMonth()]} {cal.getFullYear()}</div>
+            <button style={BT} onClick={()=>setCal(d=>new Date(d.getFullYear(),d.getMonth()+1,1))}>Next →</button>
+          </div>
+          <div style={CD}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:3,marginBottom:5}}>
+              {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=><div key={d} style={{fontSize:11,color:T.sub,textAlign:"center",padding:"4px 0"}}>{d}</div>)}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,minmax(0,1fr))",gap:3}}>
+              {Array(calFirst).fill(null).map((_,i)=><div key={"e"+i}/>)}
+              {Array.from({length:calDays},(_,i)=>i+1).map(day=>{
+                const ds=`${cal.getFullYear()}-${String(cal.getMonth()+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+                const bks=calBks(day);const isT=ds===today;
+                return(
+                  <div key={day} style={{minHeight:58,border:isT?`1.5px solid ${T.pur}`:`1px solid ${T.brd}`,borderRadius:8,padding:"4px 5px",background:bks.length?T.purBg:T.s2}}>
+                    <div style={{fontSize:11,fontWeight:isT?600:400,color:isT?T.purL:T.sub,marginBottom:2}}>{day}</div>
+                    {bks.slice(0,2).map(b=>{const u=unit(b.unitId);const c=u?col(u.colorIdx):APT_COLORS[0];
+                      return <div key={b._id} style={{fontSize:9,background:c.clr,color:"#fff",borderRadius:3,padding:"1px 4px",marginBottom:2,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{u?.name?.split(" ")[0]||"—"}</div>;
+                    })}
+                    {bks.length>2&&<div style={{fontSize:9,color:T.purL}}>+{bks.length-2}</div>}
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:10,marginTop:12}}>
+              {units.map(u=>{const c=col(u.colorIdx);return <span key={u.id} style={{display:"flex",alignItems:"center",gap:5,fontSize:11,color:T.sub}}><span style={{width:10,height:10,borderRadius:2,background:c.clr,display:"inline-block"}}/>{u.name}</span>;})}
+            </div>
+          </div>
+        </>)}
+
+        {/* ════ REPORTS ════ */}
+        {tab==="Reports"&&isMgr&&(<>
+          <div style={{fontSize:18,fontWeight:600,marginBottom:14}}>Revenue Reports</div>
+          <div style={CD}>
+            <div style={{fontWeight:600,fontSize:14,marginBottom:12}}>📄 Generate Monthly PDF Report</div>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:14}}>
+              <div style={{flex:1,minWidth:140}}><label style={LB}>Month</label>
+                <select style={SI} value={reportMonth} onChange={e=>setReportMonth(Number(e.target.value))}>
+                  {MN.map((m,i)=><option key={m} value={i}>{m}</option>)}
+                </select>
+              </div>
+              <div style={{flex:1,minWidth:120}}><label style={LB}>Year</label>
+                <select style={SI} value={reportYear} onChange={e=>setReportYear(Number(e.target.value))}>
+                  {[2024,2025,2026,2027].map(y=><option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+            </div>
+            {(()=>{
+              const mb=bookings.filter(b=>{const d=new Date(b.checkIn);return d.getMonth()===reportMonth&&d.getFullYear()===reportYear;});
+              const rev=mb.filter(b=>b.payment==="Paid").reduce((s,b)=>s+(unit(b.unitId)?.price||0)*nts(b.checkIn,b.checkOut),0);
+              return <div style={{background:T.s2,borderRadius:10,padding:"14px 16px",marginBottom:16}}>
+                <div style={{fontSize:11,color:T.sub,marginBottom:10,fontWeight:500,textTransform:"uppercase",letterSpacing:".04em"}}>Preview: {MN[reportMonth]} {reportYear}</div>
+                <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
+                  {[{l:"Bookings",v:mb.length,c:T.purL},{l:"Confirmed",v:mb.filter(b=>b.status==="Confirmed").length,c:T.grn},
+                    {l:"Cancelled",v:mb.filter(b=>b.status==="Cancelled").length,c:T.red},{l:"Revenue",v:fmt(rev),c:T.grn}].map(x=>(
+                    <div key={x.l}><div style={{fontSize:10,color:T.sub}}>{x.l}</div><div style={{fontSize:18,fontWeight:700,color:x.c}}>{x.v}</div></div>
+                  ))}
+                </div>
+              </div>;
+            })()}
+            <button style={{...BP,display:"flex",alignItems:"center",gap:8}} onClick={generatePDF}>
+              <span>📥</span><span>Download PDF</span>
+            </button>
+          </div>
+          <div style={CD}>
+            <div style={{fontWeight:600,fontSize:14,marginBottom:14}}>All-Time Revenue by Unit</div>
+            {units.map(u=>{
+              const c=col(u.colorIdx);
+              const rev=bookings.filter(b=>b.unitId===u.id&&b.payment==="Paid").reduce((s,b)=>s+nts(b.checkIn,b.checkOut)*u.price,0);
+              const count=bookings.filter(b=>b.unitId===u.id).length;
+              const maxRev=Math.max(...units.map(uu=>bookings.filter(b=>b.unitId===uu.id&&b.payment==="Paid").reduce((s,b)=>s+nts(b.checkIn,b.checkOut)*uu.price,0)),1);
+              return(
+                <div key={u.id} style={{marginBottom:14}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:5,fontSize:13}}>
+                    <span style={{color:c.clr,fontWeight:500}}>{u.name}</span>
+                    <span style={{color:T.grn,fontWeight:500}}>{fmt(rev)}<span style={{color:T.sub,fontWeight:400,fontSize:11}}> · {count} booking{count!==1?"s":""}</span></span>
+                  </div>
+                  <div style={{height:8,background:T.s2,borderRadius:4,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${(rev/maxRev)*100}%`,background:`linear-gradient(90deg,${c.clr},${c.clr}88)`,borderRadius:4}}/>
+                  </div>
+                </div>
+              );
+            })}
+            {units.length===0&&<div style={{color:T.sub,fontSize:13}}>No units to report on yet.</div>}
+          </div>
+        </>)}
+
+        {/* ════ STAFF (admin) ════ */}
+        {tab==="Staff"&&isAdmin&&(<>
+          <div style={{fontSize:18,fontWeight:600,marginBottom:6}}>Staff Management</div>
+          <div style={{fontSize:13,color:T.sub,marginBottom:14}}>Create accounts via Firebase Console → Authentication → Add user. Then assign roles here.</div>
+          <div style={{overflowX:"auto",border:`1px solid ${T.brd}`,borderRadius:12,marginBottom:16}}>
+            <table>
+              <thead style={{background:T.s2}}><tr>{["Staff member","Email","Current role","Change role"].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
+              <tbody>
+                {staff.length===0&&<tr><td colSpan={4} style={{...TD,textAlign:"center",color:T.sub,padding:24}}>No staff records yet.</td></tr>}
+                {staff.map(s=>(
+                  <tr key={s._id}>
+                    <td style={TD}>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <div style={{width:30,height:30,borderRadius:"50%",background:T.purDim,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:600,color:T.purL}}>{ini(s.name||s.email)}</div>
+                        <span style={{fontWeight:500}}>{s.name||s.email.split("@")[0]}{s._id===user.uid&&<span style={{fontSize:10,color:T.mute}}> (you)</span>}</span>
+                      </div>
+                    </td>
+                    <td style={{...TD,fontSize:12,color:T.sub}}>{s.email}</td>
+                    <td style={TD}><RBadge role={s.role}/></td>
+                    <td style={TD}>
+                      {s._id!==user.uid?(
+                        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                          {ROLES.map(r=>(
+                            <button key={r} onClick={()=>updateRole(s._id,r)}
+                              style={{...BT,fontSize:11,padding:"4px 10px",textTransform:"capitalize",
+                                background:s.role===r?RC[r]+"22":"none",color:s.role===r?RC[r]:T.sub,borderColor:s.role===r?RC[r]+"55":T.brd}}>
+                              {r}
+                            </button>
+                          ))}
+                        </div>
+                      ):<span style={{fontSize:11,color:T.mute}}>Cannot edit own role</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={CD}>
+            <div style={{fontWeight:600,fontSize:14,marginBottom:12}}>Role Permissions</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(175px,1fr))",gap:10}}>
+              {[{role:"admin",perms:["All features","Manage properties","Manage staff","Audit log","Delete bookings","PDF reports"]},
+                {role:"manager",perms:["New bookings","Edit bookings","View customers","PDF reports","WhatsApp & Paystack"]},
+                {role:"staff",perms:["View bookings","View dashboard","View calendar"]}].map(r=>(
+                <div key={r.role} style={{background:T.s2,borderRadius:8,padding:"12px 14px",border:`1px solid ${RC[r.role]}33`}}>
+                  <RBadge role={r.role}/>
+                  <ul style={{marginTop:8,paddingLeft:16,fontSize:11,color:T.sub,lineHeight:1.9}}>{r.perms.map(p=><li key={p}>{p}</li>)}</ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>)}
+
+        {/* ════ AUDIT ════ */}
+        {tab==="Audit"&&isAdmin&&(<>
+          <div style={{fontSize:18,fontWeight:600,marginBottom:6}}>Audit Log</div>
+          <div style={{fontSize:13,color:T.sub,marginBottom:14}}>Every login and logout is automatically recorded with timestamp and device info.</div>
+          <div style={{overflowX:"auto",border:`1px solid ${T.brd}`,borderRadius:12}}>
+            <table>
+              <thead style={{background:T.s2}}><tr>{["User","Action","Date & Time","Device"].map(h=><th key={h} style={TH}>{h}</th>)}</tr></thead>
+              <tbody>
+                {auditLog.length===0&&<tr><td colSpan={4} style={{...TD,textAlign:"center",color:T.sub,padding:24}}>No audit records yet.</td></tr>}
+                {auditLog.map(log=>(
+                  <tr key={log._id}>
+                    <td style={{...TD,color:T.purL,fontSize:12}}>{log.email}</td>
+                    <td style={TD}><span style={{background:log.action==="LOGIN"?T.purBg:"#2d0d0d",color:log.action==="LOGIN"?T.purL:T.red,borderRadius:6,padding:"3px 10px",fontSize:11,fontWeight:500}}>{log.action}</span></td>
+                    <td style={{...TD,color:T.sub,fontSize:12}}>{log.timestamp?.toDate?.()?.toLocaleString()||"—"}</td>
+                    <td style={{...TD,color:T.mute,fontSize:11,maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{log.device||"—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>)}
+
+      </div>
+
+      {/* ════ BOOKING DETAIL MODAL ════ */}
+      {sel&&(
+        <div style={MD} onClick={()=>{setSel(null);setEditMode(false);}}>
+          <div style={MB} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div style={{fontSize:15,fontWeight:600}}>{editMode?"Edit Booking":"Booking Details"}</div>
+              <div style={{display:"flex",gap:7}}>
+                {!editMode&&isMgr&&<button style={BT} onClick={()=>{setEditMode(true);setEditForm({...sel});}}>Edit</button>}
+                {!editMode&&isAdmin&&<button style={BD} onClick={()=>setDelId(sel._id)}>Delete</button>}
+                <button style={BT} onClick={()=>{setSel(null);setEditMode(false);}}>✕</button>
+              </div>
+            </div>
+            {!editMode?(<>
+              <DR label="Guest"     value={<strong>{sel.guest}</strong>}/>
+              <DR label="Email"     value={sel.email}/>
+              <DR label="Phone"     value={sel.phone||"—"}/>
+              <DR label="Unit"      value={<UChip unit={unit(sel.unitId)}/>}/>
+              <DR label="Check-in"  value={sel.checkIn}/>
+              <DR label="Check-out" value={sel.checkOut}/>
+              <DR label="Nights"    value={nts(sel.checkIn,sel.checkOut)}/>
+              <DR label="Total"     value={<strong style={{color:T.grn}}>{fmt(nts(sel.checkIn,sel.checkOut)*(unit(sel.unitId)?.price||0))}</strong>}/>
+              <DR label="Status"    value={<Badge s={sel.status}/>}/>
+              <DR label="Payment"   value={<span style={{color:PC[sel.payment],fontWeight:500}}>{sel.payment}</span>}/>
+              {sel.paystackRef&&<DR label="Pay Ref" value={<span style={{color:T.sub,fontSize:11}}>{sel.paystackRef}</span>}/>}
+              <DR label="Notes"     value={sel.notes||"—"}/>
+              {sel.createdBy&&<DR label="Created by" value={<span style={{color:T.sub,fontSize:12}}>{sel.createdBy}</span>}/>}
+
+              {/* Action buttons */}
+              {isMgr&&<div style={{marginTop:16,display:"flex",flexDirection:"column",gap:9}}>
+                <button style={{...BW,justifyContent:"center",padding:"11px"}} onClick={()=>sendWhatsApp(sel)}>
+                  <span>💬</span><span>Send WhatsApp Confirmation</span>
+                </button>
+                {sel.payment!=="Paid"
+                  ?<button style={{...BG,justifyContent:"center",padding:"11px"}} onClick={()=>payWithPaystack(sel)}>
+                    <span>💳</span><span>Collect Payment via Paystack</span>
+                  </button>
+                  :<div style={{background:"#0d2d1a",border:`1px solid ${T.grn}44`,borderRadius:8,padding:"11px",textAlign:"center",fontSize:13,color:T.grn}}>✓ Payment fully received</div>
+                }
+              </div>}
+
+              {isMgr&&<div style={{marginTop:14}}>
+                <div style={{fontSize:12,color:T.sub,marginBottom:7}}>Quick status update</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {STATUSES.map(s=>(
+                    <button key={s} onClick={()=>quickStatus(sel,s)}
+                      style={{...BT,background:sel.status===s?T.purDim:"none",color:sel.status===s?T.purL:T.txt,borderColor:sel.status===s?T.pur:T.brd2,fontWeight:sel.status===s?500:400}}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>}
+            </>):(<>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                <div style={{flex:1,minWidth:140}}><label style={LB}>Guest name</label><input style={SI} value={editForm.guest} onChange={e=>setEditForm(f=>({...f,guest:e.target.value}))}/></div>
+                <div style={{flex:1,minWidth:140}}><label style={LB}>Email</label><input style={SI} value={editForm.email} onChange={e=>setEditForm(f=>({...f,email:e.target.value}))}/></div>
+              </div>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                <div style={{flex:1,minWidth:140}}><label style={LB}>Phone</label><input style={SI} value={editForm.phone} onChange={e=>setEditForm(f=>({...f,phone:e.target.value}))}/></div>
+                <div style={{flex:1,minWidth:140}}><label style={LB}>Unit</label>
+                  <select style={SI} value={editForm.unitId} onChange={e=>setEditForm(f=>({...f,unitId:e.target.value}))}>
+                    {units.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                <div style={{flex:1,minWidth:140}}><label style={LB}>Check-in</label><input type="date" style={SI} value={editForm.checkIn} onChange={e=>setEditForm(f=>({...f,checkIn:e.target.value}))}/></div>
+                <div style={{flex:1,minWidth:140}}><label style={LB}>Check-out</label><input type="date" style={SI} value={editForm.checkOut} onChange={e=>setEditForm(f=>({...f,checkOut:e.target.value}))}/></div>
+              </div>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                <div style={{flex:1,minWidth:140}}><label style={LB}>Status</label><select style={SI} value={editForm.status} onChange={e=>setEditForm(f=>({...f,status:e.target.value}))}>{STATUSES.map(x=><option key={x}>{x}</option>)}</select></div>
+                <div style={{flex:1,minWidth:140}}><label style={LB}>Payment</label><select style={SI} value={editForm.payment} onChange={e=>setEditForm(f=>({...f,payment:e.target.value}))}>{["Paid","Partial","Unpaid"].map(x=><option key={x}>{x}</option>)}</select></div>
+              </div>
+              <label style={LB}>Notes</label>
+              <textarea style={{...SI,height:64,resize:"vertical"}} value={editForm.notes} onChange={e=>setEditForm(f=>({...f,notes:e.target.value}))}/>
+              <div style={{display:"flex",gap:8,marginTop:4}}>
+                <button style={BP} onClick={saveEdit}>Save Changes</button>
+                <button style={BT} onClick={()=>setEditMode(false)}>Cancel</button>
+              </div>
+            </>)}
+          </div>
+        </div>
+      )}
+
+      {/* ════ DELETE CONFIRM ════ */}
+      {delId&&(
+        <div style={MD} onClick={()=>setDelId(null)}>
+          <div style={{...MB,maxWidth:340}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontWeight:600,marginBottom:10,fontSize:16}}>Delete this booking?</div>
+            <div style={{fontSize:13,color:T.sub,marginBottom:20}}>This is permanent and cannot be undone.</div>
+            <div style={{display:"flex",gap:8}}>
+              <button style={{...BP,background:T.red}} onClick={()=>deleteBooking(delId)}>Yes, delete</button>
+              <button style={BT} onClick={()=>setDelId(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Root ──
+function App(){
+  const [user,setUser]=useState(undefined);
+  useEffect(()=>{const unsub=auth.onAuthStateChanged(u=>setUser(u||null));return unsub;},[]);
+  if(user===undefined)return(
+    <div style={{minHeight:"100vh",background:"#0a0a0f",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:14}}>
+      <Logo sz={52}/><div style={{color:"#8b86a8",fontSize:14}}>Starting ApartBook…</div>
+    </div>
+  );
+  return user?<Main user={user}/>:<Login/>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+<script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
+</body>
+</html>
