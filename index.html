@@ -481,7 +481,7 @@ window.updateRole = async function(uid,role){await db.collection("users").doc(ui
 //  NAVIGATION
 // ═══════════════════════════════════════════
 window.goTo = function(tab){
-  S.tab=tab;S.sel=null;S.editMode=false;
+  S.tab=tab;S.sel=null;S.editMode=false;S._umenu=false;
   if(tab==="Audit"&&!auditUnsub){auditUnsub=db.collection("audit_log").orderBy("timestamp","desc").limit(200).onSnapshot(snap=>{S.auditLog=snap.docs.map(d=>({...d.data(),_id:d.id}));render();});}
   if(tab==="Staff"&&!staffUnsub){staffUnsub=db.collection("users").onSnapshot(snap=>{S.staff=snap.docs.map(d=>({...d.data(),_id:d.id}));render();});}
   render();
@@ -567,14 +567,25 @@ function renderHeader(){
       ${tabs.map(t=>`<button class="tab-btn ${S.tab===t.n?"active":""}" onclick="goTo('${t.n}')">${t.n}</button>`).join("")}
     </div>
     <div class="user-area">
-      <div class="user-chip">
-        ${av(S.user.email,24)}
-        <div>
-          <div style="font-size:10px;color:#e8e6f0;max-width:68px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(S.user.email.split("@")[0])}</div>
-          <div style="font-size:9px;color:${RC[S.profile?.role]||"#8b86a8"};text-transform:capitalize">${esc(S.profile?.role||"")}</div>
-        </div>
+      <div style="position:relative">
+        <button onclick="S._umenu=!S._umenu;render()" style="display:flex;align-items:center;gap:6px;background:none;border:1px solid #3a3a55;border-radius:8px;padding:4px 8px 4px 6px;cursor:pointer;color:#e8e6f0">
+          ${av(S.user.email,26)}
+          <div style="text-align:left">
+            <div style="font-size:10px;color:#e8e6f0;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(S.user.email.split("@")[0])}</div>
+            <div style="font-size:9px;color:${RC[S.profile?.role]||"#8b86a8"};text-transform:capitalize">${esc(S.profile?.role||"")}</div>
+          </div>
+          <span style="font-size:9px;color:#5a5475;margin-left:2px">${S._umenu?"▲":"▼"}</span>
+        </button>
+        ${S._umenu?`<div style="position:absolute;right:0;top:calc(100% + 4px);background:#12121a;border:1px solid #2a2a3d;border-radius:10px;min-width:170px;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,.6);overflow:hidden">
+          <div style="padding:10px 14px;border-bottom:1px solid #2a2a3d">
+            <div style="font-size:12px;font-weight:500;color:#e8e6f0;word-break:break-all">${esc(S.user.email)}</div>
+            <div style="font-size:10px;color:${RC[S.profile?.role]||"#8b86a8"};text-transform:capitalize;margin-top:2px">${esc(S.profile?.role||"")}</div>
+          </div>
+          <button onclick="doLogout()" style="width:100%;text-align:left;padding:11px 14px;background:none;border:none;color:#ef4444;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px">
+            <span>⏻</span><span>Sign out</span>
+          </button>
+        </div>`:""}
       </div>
-      <button class="btn-logout" onclick="doLogout()">⏻ Sign out</button>
     </div>
   </div>`;
 }
