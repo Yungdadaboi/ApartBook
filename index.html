@@ -340,7 +340,6 @@ window.addBooking = async function(){
 
   const showErr = msg => { if(errEl) errEl.textContent=msg; };
   if(!f.guest)  { showErr("Guest name required.");    return; }
-  if(!f.email)  { showErr("Email required.");         return; }
   if(!f.unitId) { showErr("Please select a unit.");   return; }
   if(!f.checkIn||!f.checkOut){ showErr("Dates required."); return; }
   if(f.checkOut<=f.checkIn)  { showErr("Check-out must be after check-in."); return; }
@@ -748,7 +747,7 @@ function renderNewBooking(){
   <div class="card">
     <div class="frow">
       <div class="fcol"><label>Guest name *</label><input id="b-guest" placeholder="Full name"/></div>
-      <div class="fcol"><label>Email *</label><input id="b-email" type="email" placeholder="guest@email.com"/></div>
+      <div class="fcol"><label>Email <span style="color:#5a5475;font-size:11px">(optional)</span></label><input id="b-email" type="email" placeholder="guest@email.com"/></div>
     </div>
     <div class="frow">
       <div class="fcol"><label>Phone (WhatsApp) 📱</label><input id="b-phone" placeholder="0801-234-5678"/></div>
