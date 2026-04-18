@@ -484,10 +484,20 @@ window.updateRole = async function(uid,role){await db.collection("users").doc(ui
 //  NAVIGATION
 // ═══════════════════════════════════════════
 window.goTo = function(tab){
-  S.tab=tab;S.sel=null;S.editMode=false;S._umenu=false;
-  if(tab==="Audit"&&!auditUnsub){auditUnsub=db.collection("audit_log").orderBy("timestamp","desc").limit(200).onSnapshot(snap=>{S.auditLog=snap.docs.map(d=>({...d.data(),_id:d.id}));render();});}
-  if(tab==="Staff"&&!staffUnsub){staffUnsub=db.collection("users").onSnapshot(snap=>{S.staff=snap.docs.map(d=>({...d.data(),_id:d.id}));render();});}
+  S.tab=tab;
+  S.sel=null;
+  S.editMode=false;
+  if(tab==="Audit"&&!auditUnsub){
+    auditUnsub=db.collection("audit_log").orderBy("timestamp","desc").limit(200)
+      .onSnapshot(snap=>{S.auditLog=snap.docs.map(d=>({...d.data(),_id:d.id}));render();});
+  }
+  if(tab==="Staff"&&!staffUnsub){
+    staffUnsub=db.collection("users")
+      .onSnapshot(snap=>{S.staff=snap.docs.map(d=>({...d.data(),_id:d.id}));render();});
+  }
   render();
+  // scroll to top when switching tabs
+  window.scrollTo({top:0,behavior:"smooth"});
 };
 
 window.openSel = function(id){S.sel=S.bookings.find(x=>x._id===id)||null;render();};
@@ -504,22 +514,25 @@ window.setReportYear  = function(v){S.reportYear=Number(v);render();};
 window.setSearch = function(v){S.search=v;render();};
 window.setFilter = function(v){S.filterStatus=v;render();};
 window.refreshTotal = function(){
-  const unitId = document.getElementById("b-unit")?.value;
-  const cin    = document.getElementById("b-cin")?.value;
-  const cout   = document.getElementById("b-cout")?.value;
-  const preview= document.getElementById("total-preview");
-  if(!preview) return;
-  if(unitId && cin && cout && cout > cin){
-    const u = getUnit(unitId);
-    const total = nts(cin, cout) * (u?.price || 0);
-    preview.innerHTML = `<div class="info-box">
-      <span style="color:#8b86a8">Estimated total: </span>
-      <span style="font-weight:600;color:#9d65f5">${fmt(total)}</span>
-      <span style="color:#8b86a8"> (${nts(cin,cout)} nights × ${fmt(u?.price||0)})</span>
-    </div>`;
-  } else {
-    preview.innerHTML = "";
-  }
+  try{
+    const unitId = document.getElementById("b-unit")?.value;
+    const cin    = document.getElementById("b-cin")?.value;
+    const cout   = document.getElementById("b-cout")?.value;
+    const preview= document.getElementById("total-preview");
+    if(!preview) return;
+    if(unitId && cin && cout && cout > cin){
+      const u = getUnit(unitId);
+      const total = nts(cin, cout) * (u?.price || 0);
+      preview.innerHTML = `<div class="info-box">
+        <span style="color:#8b86a8">Estimated total: </span>
+        <span style="font-weight:600;color:#9d65f5">${fmt(total)}</span>
+        <span style="color:#8b86a8"> (${nts(cin,cout)} nights × ${fmt(u?.price||0)})</span>
+      </div>`;
+    } else {
+      preview.innerHTML = "";
+    }
+  }catch(e){}
+  // never call render() here - it wipes the form
 };
 window.updateEditForm = function(k,v){if(S.editForm)S.editForm[k]=v;};
 
@@ -569,26 +582,21 @@ function renderHeader(){
       ${propSel}
       ${tabs.map(t=>`<button class="tab-btn ${S.tab===t.n?"active":""}" onclick="goTo('${t.n}')">${t.n}</button>`).join("")}
     </div>
-    <div class="user-area">
-      <div style="position:relative">
-        <button onclick="S._umenu=!S._umenu;render()" style="display:flex;align-items:center;gap:6px;background:none;border:1px solid #3a3a55;border-radius:8px;padding:4px 8px 4px 6px;cursor:pointer;color:#e8e6f0">
-          ${av(S.user.email,26)}
-          <div style="text-align:left">
-            <div style="font-size:10px;color:#e8e6f0;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(S.user.email.split("@")[0])}</div>
-            <div style="font-size:9px;color:${RC[S.profile?.role]||"#8b86a8"};text-transform:capitalize">${esc(S.profile?.role||"")}</div>
-          </div>
-          <span style="font-size:9px;color:#5a5475;margin-left:2px">${S._umenu?"▲":"▼"}</span>
-        </button>
-        ${S._umenu?`<div style="position:absolute;right:0;top:calc(100% + 4px);background:#12121a;border:1px solid #2a2a3d;border-radius:10px;min-width:170px;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,.6);overflow:hidden">
-          <div style="padding:10px 14px;border-bottom:1px solid #2a2a3d">
-            <div style="font-size:12px;font-weight:500;color:#e8e6f0;word-break:break-all">${esc(S.user.email)}</div>
-            <div style="font-size:10px;color:${RC[S.profile?.role]||"#8b86a8"};text-transform:capitalize;margin-top:2px">${esc(S.profile?.role||"")}</div>
-          </div>
-          <button onclick="doLogout()" style="width:100%;text-align:left;padding:11px 14px;background:none;border:none;color:#ef4444;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px">
-            <span>⏻</span><span>Sign out</span>
-          </button>
-        </div>`:""}
+    <div class="user-area" style="display:flex;align-items:center;gap:6px;flex-shrink:0;padding-left:6px">
+      <!-- compact user chip -->
+      <div style="display:flex;align-items:center;gap:5px;background:#1a1a26;border:1px solid #3a3a55;border-radius:8px;padding:4px 8px 4px 5px;flex-shrink:0">
+        ${av(S.user.email,24)}
+        <div style="max-width:74px">
+          <div style="font-size:10px;color:#e8e6f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(S.user.email.split("@")[0])}</div>
+          <div style="font-size:9px;color:${RC[S.profile?.role]||"#8b86a8"};text-transform:capitalize">${esc(S.profile?.role||"")}</div>
+        </div>
       </div>
+      <!-- always visible sign out -->
+      <button onclick="doLogout()" title="Sign out"
+        style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:#2d0d0d;border:1px solid rgba(239,68,68,.5);border-radius:8px;padding:5px 8px;cursor:pointer;gap:1px;flex-shrink:0">
+        <span style="font-size:14px;line-height:1">⏻</span>
+        <span style="font-size:8px;color:#ef4444;font-weight:600;letter-spacing:.03em">OUT</span>
+      </button>
     </div>
   </div>`;
 }
