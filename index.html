@@ -733,7 +733,9 @@ function renderProperties(){
 // ═══════════════════════════════════════════
 function renderNewBooking(){
   if(!isMgr())return`<div class="empty">Manager access required.</div>`;
-  const occ=occupied();const units=allUnits();
+  const t=tod();const occ=occupied();
+  const bookedIds=new Set(S.bookings.filter(b=>b.checkIn>t&&b.status==="Confirmed").map(b=>b.unitId));
+  const units=allUnits();
   return `
   <div class="pg-title">New Reservation — ${esc(curProp()?.name||"")}</div>
   <div class="card">
@@ -744,10 +746,47 @@ function renderNewBooking(){
     <div class="frow">
       <div class="fcol"><label>Phone (WhatsApp) 📱</label><input id="b-phone" placeholder="0801-234-5678"/></div>
       <div class="fcol"><label>Unit *</label>
-        <select id="b-unit" onchange="refreshTotal()">
+        <select id="b-unit" onchange="refreshTotal()" style="background:#1a1a26;border:1px solid #3a3a55;border-radius:8px;color:#e8e6f0;padding:8px 12px;font-size:13px;width:100%;outline:none;margin-bottom:10px">
           <option value="">— Select unit —</option>
-          ${units.map(u=>`<option value="${u.id}">${esc(u.name)} — ${fmt(u.price)}/night${occ.has(u.id)?" ⚠ occupied":""}</option>`).join("")}
+          ${units.map(u=>{
+            const isOcc=occ.has(u.id);
+            const isBooked=!isOcc&&bookedIds.has(u.id);
+            const upcomingBk=S.bookings.find(b=>b.unitId===u.id&&b.checkIn>t&&b.status==="Confirmed");
+            const label=isOcc
+              ? `🔴 ${u.name} — OCCUPIED (unavailable)`
+              : isBooked
+              ? `🟡 ${u.name} — BOOKED · ${upcomingBk?`${upcomingBk.guest}, ${upcomingBk.checkIn}→${upcomingBk.checkOut}`:""}`
+              : `🟢 ${u.name} — ${fmt(u.price)}/night`;
+            return `<option value="${u.id}" ${isOcc?"disabled":""} style="color:${isOcc?"#ef4444":isBooked?"#f59e0b":"#e8e6f0"}">${label}</option>`;
+          }).join("")}
         </select>
+        <!-- Visual unit picker cards -->
+        <div id="unit-cards" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+          ${units.map(u=>{
+            const c=clr(u.colorIdx||0);
+            const isOcc=occ.has(u.id);
+            const isBooked=!isOcc&&bookedIds.has(u.id);
+            const upcomingBk=S.bookings.find(b=>b.unitId===u.id&&b.checkIn>t&&b.status==="Confirmed");
+            const borderClr=isOcc?"#ef4444":isBooked?"#f59e0b":c.c+"44";
+            const bgClr=isOcc?"#2d0d0d":isBooked?"#2d1f0d":c.b;
+            const tagBg=isOcc?"#ef4444":isBooked?"#f59e0b":"#22c55e";
+            const tagTxt=isOcc?"🔴 Occupied":isBooked?"🟡 Booked":"🟢 Available";
+            const tagColor=isOcc||isBooked?"#000":"#000";
+            return `<div onclick="${isOcc?"":`document.getElementById('b-unit').value='${u.id}';refreshTotal();document.querySelectorAll('.ucard').forEach(x=>x.style.borderColor='${c.c+"33"}');this.style.borderColor='${c.c}';this.style.background='${c.b}';`}"
+              class="ucard"
+              style="border:2px solid ${borderClr};border-radius:10px;padding:10px 14px;background:${bgClr};cursor:${isOcc?"not-allowed":"pointer"};transition:.2s;opacity:${isOcc?.6:1}">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div style="font-size:13px;font-weight:600;color:${isOcc?"#ef4444":isBooked?"#f59e0b":c.c}">${esc(u.name)}</div>
+                  <div style="font-size:11px;color:#8b86a8;margin-top:2px">${u.floor?u.floor+" · ":""}${u.beds} bed${u.beds!==1?"s":""} · ${fmt(u.price)}/night</div>
+                  ${isBooked&&upcomingBk?`<div style="font-size:10px;color:#f59e0b;margin-top:3px">📅 ${esc(upcomingBk.guest)} · ${upcomingBk.checkIn} → ${upcomingBk.checkOut}</div>`:""}
+                  ${isOcc?`<div style="font-size:10px;color:#ef4444;margin-top:3px">⛔ Cannot book — unit is currently occupied</div>`:""}
+                </div>
+                <span style="font-size:10px;font-weight:700;background:${tagBg};color:${tagColor};border-radius:20px;padding:3px 10px;white-space:nowrap;flex-shrink:0;margin-left:8px">${tagTxt}</span>
+              </div>
+            </div>`;
+          }).join("")}
+        </div>
       </div>
     </div>
     <div class="frow">
