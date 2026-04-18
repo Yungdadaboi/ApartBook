@@ -32,10 +32,13 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.6)}
 .pg-title{font-size:17px;font-weight:600;margin-bottom:14px}
 .card{background:#12121a;border:1px solid #2a2a3d;border-radius:12px;padding:16px 18px;margin-bottom:14px}
 .card-title{font-size:14px;font-weight:600;margin-bottom:12px}
-.stats{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
-.stat{background:#12121a;border:1px solid #2a2a3d;border-radius:12px;padding:12px 14px;flex:1;min-width:95px}
-.stat-l{font-size:10px;color:#8b86a8;margin-bottom:3px}
-.stat-v{font-size:19px;font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}
+.stat{background:#12121a;border:1px solid #2a2a3d;border-radius:12px;padding:12px 14px}
+.stat-l{font-size:11px;color:#8b86a8;margin-bottom:4px}
+.stat-v{font-size:20px;font-weight:700}
+.stat.wide{grid-column:1/-1}
+.unit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100%,1fr));gap:8px}
+@media(min-width:500px){.unit-grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}.stats{grid-template-columns:repeat(3,1fr)}}
 .frow{display:flex;gap:10px;flex-wrap:wrap}
 .fcol{flex:1;min-width:140px}
 label{font-size:12px;color:#8b86a8;display:block;margin-bottom:4px}
@@ -317,6 +320,8 @@ window.addBooking = async function(){
     unitId:  document.getElementById("b-unit")?.value,
     checkIn: document.getElementById("b-cin")?.value,
     checkOut:document.getElementById("b-cout")?.value,
+    checkInTime: document.getElementById("b-cintime")?.value||"",
+    checkOutTime:document.getElementById("b-couttime")?.value||"",
     status:  document.getElementById("b-status")?.value,
     payment: document.getElementById("b-pay")?.value,
     notes:   document.getElementById("b-notes")?.value?.trim(),
@@ -545,42 +550,84 @@ function renderDashboard(){
   const t=tod();const occ=occupied();
   const rev=S.bookings.filter(b=>b.payment==="Paid"||b.payment==="Partial").reduce((s,b)=>s+(getUnit(b.unitId)?.price||0)*nts(b.checkIn,b.checkOut)*(b.payment==="Paid"?1:.5),0);
   const upcoming=S.bookings.filter(b=>b.checkIn>=t&&b.status==="Confirmed").slice(0,5);
+  const checkInsToday=S.bookings.filter(b=>b.checkIn===t&&b.status!=="Cancelled");
+  const checkOutsToday=S.bookings.filter(b=>b.checkOut===t&&b.status!=="Cancelled");
   const units=allUnits();
+  const fmtTime=t12=>{if(!t12)return"—";const[h,m]=t12.split(":");const hh=Number(h);return`${hh%12||12}:${m} ${hh<12?"AM":"PM"}`};
   return `
   <div class="pg-title">Overview <span style="color:#8b86a8;font-size:13px;font-weight:400">— ${t}</span></div>
   <div class="stats">
-    <div class="stat"><div class="stat-l">Total bookings</div><div class="stat-v" style="color:#9d65f5">${S.bookings.length}</div></div>
-    <div class="stat"><div class="stat-l">Occupied</div><div class="stat-v" style="color:#22c55e">${occ.size}/${units.length}</div></div>
-    <div class="stat"><div class="stat-l">Check-ins today</div><div class="stat-v" style="color:#f59e0b">${S.bookings.filter(b=>b.checkIn===t&&b.status!=="Cancelled").length}</div></div>
-    <div class="stat"><div class="stat-l">Check-outs today</div><div class="stat-v" style="color:#60a5fa">${S.bookings.filter(b=>b.checkOut===t&&b.status!=="Cancelled").length}</div></div>
-    <div class="stat"><div class="stat-l">Est. revenue</div><div class="stat-v" style="color:#9d65f5;font-size:14px">${fmt(Math.round(rev))}</div></div>
+    <div class="stat" style="border-top:3px solid #9d65f5"><div class="stat-l">Total bookings</div><div class="stat-v" style="color:#9d65f5">${S.bookings.length}</div></div>
+    <div class="stat" style="border-top:3px solid #22c55e"><div class="stat-l">Occupied units</div><div class="stat-v" style="color:#22c55e">${occ.size}/${units.length}</div></div>
+    <div class="stat" style="border-top:3px solid #f59e0b"><div class="stat-l">Check-ins today</div><div class="stat-v" style="color:#f59e0b">${checkInsToday.length}</div></div>
+    <div class="stat" style="border-top:3px solid #60a5fa"><div class="stat-l">Check-outs today</div><div class="stat-v" style="color:#60a5fa">${checkOutsToday.length}</div></div>
+    <div class="stat wide" style="border-top:3px solid #9d65f5"><div class="stat-l">Estimated revenue</div><div class="stat-v" style="color:#9d65f5;font-size:18px">${fmt(Math.round(rev))}</div></div>
   </div>
+
+  <!-- Units -->
   <div class="card">
     <div class="card-title">Unit Status — ${esc(curProp()?.name||"")}</div>
     <div class="unit-grid">
-      ${units.length===0?`<div style="color:#8b86a8;font-size:13px">No units yet. Go to Properties tab to add units.</div>`:units.map(u=>{
+      ${units.length===0?`<div style="color:#8b86a8;font-size:13px;padding:8px 0">No units yet. Go to Properties tab to add units.</div>`:units.map(u=>{
         const c=clr(u.colorIdx||0);const isOcc=occ.has(u.id);
         const cur=S.bookings.find(b=>b.unitId===u.id&&b.checkIn<=t&&b.checkOut>t&&b.status==="Confirmed");
-        return `<div style="border:1px solid ${isOcc?c.c+"55":"#2a2a3d"};border-radius:10px;padding:11px 13px;background:${isOcc?c.b:"#1a1a26"}">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="font-weight:500;font-size:13px;color:${isOcc?c.c:"#e8e6f0"}">${esc(u.name)}</span>
-            <span style="font-size:11px;font-weight:500;color:${isOcc?c.c:"#8b86a8"};background:${isOcc?c.b:"#12121a"};border:1px solid ${isOcc?c.c+"44":"#2a2a3d"};border-radius:5px;padding:2px 7px">${isOcc?"Occupied":"Available"}</span>
+        return `<div style="border:1px solid ${isOcc?c.c+"66":"#2a2a3d"};border-left:3px solid ${isOcc?c.c:"#3a3a55"};border-radius:10px;padding:11px 14px;background:${isOcc?c.b:"#1a1a26"}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font-weight:600;font-size:13px;color:${isOcc?c.c:"#e8e6f0"}">${esc(u.name)}</span>
+            <span style="font-size:10px;font-weight:600;color:${isOcc?"#fff":"#8b86a8"};background:${isOcc?c.c:"#2a2a3d"};border-radius:20px;padding:2px 9px">${isOcc?"🔴 Occupied":"🟢 Free"}</span>
           </div>
-          <div style="font-size:11px;color:#8b86a8;margin-top:4px">${u.floor?u.floor+" · ":""}${u.beds} bed${u.beds!==1?"s":""} · ${fmt(u.price)}/night</div>
-          ${cur?`<div style="font-size:11px;color:${c.c};margin-top:4px">Guest: ${esc(cur.guest)} · out ${cur.checkOut}</div>`:""}
+          <div style="font-size:11px;color:#8b86a8">${u.floor?u.floor+" · ":""}${u.beds} bed${u.beds!==1?"s":""} · ${fmt(u.price)}/night</div>
+          ${cur?`<div style="font-size:11px;color:${c.c};margin-top:5px;padding-top:5px;border-top:1px solid ${c.c}22">👤 ${esc(cur.guest)} · checks out ${cur.checkOut}${cur.checkOutTime?" at "+fmtTime(cur.checkOutTime):""}</div>`:""}
         </div>`;
       }).join("")}
     </div>
   </div>
+
+  <!-- Today's Check-ins -->
   <div class="card">
-    <div class="card-title">Upcoming Confirmed Check-ins</div>
+    <div class="card-title">📥 Today's Check-ins (${checkInsToday.length})</div>
+    ${checkInsToday.length===0?`<div class="empty">No check-ins today.</div>`:checkInsToday.map(b=>{
+      const u=getUnit(b.unitId);const c=u?clr(u.colorIdx||0):CLRS[0];
+      return `<div class="checkin-item" onclick="openSel('${b._id}');goTo('Bookings')">
+        ${av(b.guest,36,c.b,c.c+"44",c.c)}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600">${esc(b.guest)}</div>
+          <div style="font-size:11px;color:#8b86a8">${esc(u?.name||"—")} · ${nts(b.checkIn,b.checkOut)} nights</div>
+          <div style="font-size:11px;color:#f59e0b;margin-top:2px">⏰ Check-in: ${b.checkInTime?fmtTime(b.checkInTime):"Time not set"}</div>
+        </div>
+        ${statusBadge(b.status)}
+      </div>`;
+    }).join("")}
+  </div>
+
+  <!-- Today's Check-outs -->
+  <div class="card">
+    <div class="card-title">📤 Today's Check-outs (${checkOutsToday.length})</div>
+    ${checkOutsToday.length===0?`<div class="empty">No check-outs today.</div>`:checkOutsToday.map(b=>{
+      const u=getUnit(b.unitId);const c=u?clr(u.colorIdx||0):CLRS[0];
+      return `<div class="checkin-item" onclick="openSel('${b._id}');goTo('Bookings')">
+        ${av(b.guest,36,c.b,c.c+"44",c.c)}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600">${esc(b.guest)}</div>
+          <div style="font-size:11px;color:#8b86a8">${esc(u?.name||"—")} · stayed ${nts(b.checkIn,b.checkOut)} nights</div>
+          <div style="font-size:11px;color:#60a5fa;margin-top:2px">⏰ Check-out: ${b.checkOutTime?fmtTime(b.checkOutTime):"Time not set"}</div>
+        </div>
+        ${payBadge(b.payment)}
+      </div>`;
+    }).join("")}
+  </div>
+
+  <!-- Upcoming -->
+  <div class="card">
+    <div class="card-title">🗓 Upcoming Confirmed Check-ins</div>
     ${upcoming.length===0?`<div class="empty">No upcoming confirmed check-ins.</div>`:upcoming.map(b=>{
       const u=getUnit(b.unitId);const c=u?clr(u.colorIdx||0):CLRS[0];
       return `<div class="checkin-item" onclick="openSel('${b._id}');goTo('Bookings')">
         ${av(b.guest,34,c.b,c.c+"44",c.c)}
-        <div style="flex:1">
+        <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:500">${esc(b.guest)}</div>
           <div style="font-size:11px;color:#8b86a8">${esc(u?.name||"—")} · ${b.checkIn} → ${b.checkOut} · ${nts(b.checkIn,b.checkOut)} nights</div>
+          ${b.checkInTime?`<div style="font-size:11px;color:#9d65f5;margin-top:2px">⏰ ${fmtTime(b.checkInTime)}</div>`:""}
         </div>
         ${statusBadge(b.status)}
       </div>`;
@@ -659,8 +706,38 @@ function renderNewBooking(){
       </div>
     </div>
     <div class="frow">
-      <div class="fcol"><label>Check-in *</label><input id="b-cin" type="date" onchange="refreshTotal()"/></div>
-      <div class="fcol"><label>Check-out *</label><input id="b-cout" type="date" onchange="refreshTotal()"/></div>
+      <div class="fcol"><label>Check-in date *</label><input id="b-cin" type="date" onchange="refreshTotal()"/></div>
+      <div class="fcol"><label>Check-in time ⏰</label>
+        <select id="b-cintime">
+          <option value="">— Select time —</option>
+          <option value="06:00">6:00 AM</option><option value="07:00">7:00 AM</option>
+          <option value="08:00">8:00 AM</option><option value="09:00">9:00 AM</option>
+          <option value="10:00">10:00 AM</option><option value="11:00">11:00 AM</option>
+          <option value="12:00">12:00 PM (Noon)</option><option value="13:00">1:00 PM</option>
+          <option value="14:00">2:00 PM</option><option value="15:00">3:00 PM</option>
+          <option value="16:00">4:00 PM</option><option value="17:00">5:00 PM</option>
+          <option value="18:00">6:00 PM</option><option value="19:00">7:00 PM</option>
+          <option value="20:00">8:00 PM</option><option value="21:00">9:00 PM</option>
+          <option value="22:00">10:00 PM</option>
+        </select>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fcol"><label>Check-out date *</label><input id="b-cout" type="date" onchange="refreshTotal()"/></div>
+      <div class="fcol"><label>Check-out time ⏰</label>
+        <select id="b-couttime">
+          <option value="">— Select time —</option>
+          <option value="06:00">6:00 AM</option><option value="07:00">7:00 AM</option>
+          <option value="08:00">8:00 AM</option><option value="09:00">9:00 AM</option>
+          <option value="10:00">10:00 AM</option><option value="11:00">11:00 AM</option>
+          <option value="12:00">12:00 PM (Noon)</option><option value="13:00">1:00 PM</option>
+          <option value="14:00">2:00 PM</option><option value="15:00">3:00 PM</option>
+          <option value="16:00">4:00 PM</option><option value="17:00">5:00 PM</option>
+          <option value="18:00">6:00 PM</option><option value="19:00">7:00 PM</option>
+          <option value="20:00">8:00 PM</option><option value="21:00">9:00 PM</option>
+          <option value="22:00">10:00 PM</option>
+        </select>
+      </div>
     </div>
     <div class="frow">
       <div class="fcol"><label>Status</label><select id="b-status">${STATUSES.map(s=>`<option>${s}</option>`).join("")}</select></div>
@@ -893,6 +970,7 @@ function renderModal(){
   if(!S.sel)return"";
   const b=S.sel;const u=getUnit(b.unitId);const c=u?clr(u.colorIdx||0):CLRS[0];
   const total=nts(b.checkIn,b.checkOut)*(u?.price||0);
+  const fmtTime=t12=>{if(!t12)return"—";const[h,m]=t12.split(":");const hh=Number(h);return`${hh%12||12}:${m} ${hh<12?"AM":"PM"}`};
   if(S.editMode&&S.editForm){
     const f=S.editForm;
     return `<div class="modal-bg" onclick="closeSel()"><div class="modal-box" onclick="event.stopPropagation()">
@@ -933,8 +1011,8 @@ function renderModal(){
     <div class="dr"><span class="dl">Email</span>${esc(b.email)}</div>
     <div class="dr"><span class="dl">Phone</span>${esc(b.phone||"—")}</div>
     <div class="dr"><span class="dl">Unit</span>${unitChip(u)}</div>
-    <div class="dr"><span class="dl">Check-in</span>${b.checkIn}</div>
-    <div class="dr"><span class="dl">Check-out</span>${b.checkOut}</div>
+    <div class="dr"><span class="dl">Check-in</span>${b.checkIn}${b.checkInTime?` <span style="color:#f59e0b;font-size:11px">at ${fmtTime(b.checkInTime)}</span>`:""}</div>
+    <div class="dr"><span class="dl">Check-out</span>${b.checkOut}${b.checkOutTime?` <span style="color:#60a5fa;font-size:11px">at ${fmtTime(b.checkOutTime)}</span>`:""}</div>
     <div class="dr"><span class="dl">Nights</span>${nts(b.checkIn,b.checkOut)}</div>
     <div class="dr"><span class="dl">Total</span><strong style="color:#22c55e">${fmt(total)}</strong></div>
     <div class="dr"><span class="dl">Status</span>${statusBadge(b.status)}</div>
