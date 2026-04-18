@@ -18,7 +18,9 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.6)}
 ::-webkit-scrollbar-thumb{background:#3a3a55;border-radius:3px}
 .splash{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:14px}
 .splash p{color:#8b86a8;font-size:14px}
-.hdr{background:#12121a;border-bottom:1px solid #2a2a3d;padding:0 10px;display:flex;align-items:center;position:sticky;top:0;z-index:50;overflow-x:auto}
+.hdr{background:#12121a;border-bottom:1px solid #2a2a3d;padding:0 8px;display:flex;align-items:center;position:sticky;top:0;z-index:50;overflow-x:auto;min-height:48px}
+.hdr-tabs{display:flex;align-items:center;flex:1;overflow-x:auto;min-width:0}
+.hdr-tabs::-webkit-scrollbar{display:none}
 .logo-wrap{display:flex;align-items:center;gap:8px;margin-right:10px;padding:10px 0;flex-shrink:0}
 .logo-txt{font-size:14px;font-weight:800;background:linear-gradient(135deg,#c4b5fd,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap}
 .tab-btn{background:none;border:none;border-bottom:2px solid transparent;padding:12px 8px 10px;font-size:11px;cursor:pointer;color:#8b86a8;white-space:nowrap;flex-shrink:0}
@@ -515,12 +517,14 @@ function renderLogin(){
 // ═══════════════════════════════════════════
 function renderHeader(){
   const tabs=[{n:"Dashboard",s:true},{n:"Properties",s:isAdmin()},{n:"New Booking",s:isMgr()},{n:"Bookings",s:true},{n:"Customers",s:isMgr()},{n:"Calendar",s:true},{n:"Reports",s:isMgr()},{n:"Staff",s:isAdmin()},{n:"Audit",s:isAdmin()}].filter(t=>t.s);
-  const propSel=S.properties.length>1?`<select onchange="selectProp(this.value)" style="background:#1a1a26;border:1px solid #3a3a55;border-radius:7px;color:#e8e6f0;padding:4px 7px;font-size:11px;margin-right:5px;flex-shrink:0;outline:none">${S.properties.map(p=>`<option value="${p._id}" ${p._id===S.selProp?"selected":""}>${esc(p.name)}</option>`).join("")}</select>`:curProp()?`<span style="font-size:10px;color:#8b86a8;margin-right:5px;flex-shrink:0;white-space:nowrap;border-right:1px solid #2a2a3d;padding-right:5px">${esc(curProp().name)}</span>`:"";
+  const propSel=S.properties.length>1?`<select onchange="selectProp(this.value)" style="background:#1a1a26;border:1px solid #3a3a55;border-radius:7px;color:#e8e6f0;padding:4px 7px;font-size:11px;margin-right:5px;flex-shrink:0;outline:none;max-width:100px;overflow:hidden;text-overflow:ellipsis">${S.properties.map(p=>`<option value="${p._id}" ${p._id===S.selProp?"selected":""}>${esc(p.name)}</option>`).join("")}</select>`:curProp()?`<span style="font-size:10px;color:#8b86a8;margin-right:5px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;border-right:1px solid #2a2a3d;padding-right:5px">${esc(curProp().name)}</span>`:"";
   return `
   <div class="hdr">
-    <div class="logo-wrap">${LOGO(28)}<span class="logo-txt">ApartBook</span></div>
-    ${propSel}
-    ${tabs.map(t=>`<button class="tab-btn ${S.tab===t.n?"active":""}" onclick="goTo('${t.n}')">${t.n}</button>`).join("")}
+    <div class="logo-wrap" style="flex-shrink:0">${LOGO(26)}<span class="logo-txt">ApartBook</span></div>
+    <div class="hdr-tabs">
+      ${propSel}
+      ${tabs.map(t=>`<button class="tab-btn ${S.tab===t.n?"active":""}" onclick="goTo('${t.n}')">${t.n}</button>`).join("")}
+    </div>
     <div class="user-area">
       <div class="user-chip">
         ${av(S.user.email,24)}
