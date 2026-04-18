@@ -584,6 +584,7 @@ function renderDashboard(){
   const checkOutsToday=S.bookings.filter(b=>b.checkOut===t&&b.status!=="Cancelled");
   const units=allUnits();
   const fmtTime=t12=>{if(!t12)return"—";const[h,m]=t12.split(":");const hh=Number(h);return`${hh%12||12}:${m} ${hh<12?"AM":"PM"}`};
+  const bookedIds = new Set(S.bookings.filter(b=>b.checkIn>t&&b.status==="Confirmed").map(b=>b.unitId));
   return `
   <div class="pg-title">Overview <span style="color:#8b86a8;font-size:13px;font-weight:400">— ${t}</span></div>
   <div class="stats">
@@ -597,17 +598,31 @@ function renderDashboard(){
   <!-- Units -->
   <div class="card">
     <div class="card-title">Unit Status — ${esc(curProp()?.name||"")}</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;font-size:11px">
+      <span>🔴 Occupied</span><span>🟡 Booked</span><span>🟢 Free</span>
+    </div>
     <div class="unit-grid">
       ${units.length===0?`<div style="color:#8b86a8;font-size:13px;padding:8px 0">No units yet. Go to Properties tab to add units.</div>`:units.map(u=>{
-        const c=clr(u.colorIdx||0);const isOcc=occ.has(u.id);
+        const c=clr(u.colorIdx||0);
+        const isOcc=occ.has(u.id);
+        const isBooked=!isOcc&&bookedIds.has(u.id);
         const cur=S.bookings.find(b=>b.unitId===u.id&&b.checkIn<=t&&b.checkOut>t&&b.status==="Confirmed");
-        return `<div style="border:1px solid ${isOcc?c.c+"66":"#2a2a3d"};border-left:3px solid ${isOcc?c.c:"#3a3a55"};border-radius:10px;padding:11px 14px;background:${isOcc?c.b:"#1a1a26"}">
+        const upcoming=S.bookings.find(b=>b.unitId===u.id&&b.checkIn>t&&b.status==="Confirmed");
+        const borderClr=isOcc?c.c+"66":isBooked?"#f59e0b66":"#2a2a3d";
+        const leftClr=isOcc?c.c:isBooked?"#f59e0b":"#3a3a55";
+        const bgClr=isOcc?c.b:isBooked?"#2d1f0d":"#1a1a26";
+        const nameClr=isOcc?c.c:isBooked?"#f59e0b":"#e8e6f0";
+        const statusLabel=isOcc?"🔴 Occupied":isBooked?"🟡 Booked":"🟢 Free";
+        const statusBg=isOcc?c.c:isBooked?"#f59e0b":"#2a2a3d";
+        const statusTxt=isOcc?"#fff":isBooked?"#000":"#8b86a8";
+        return `<div style="border:1px solid ${borderClr};border-left:3px solid ${leftClr};border-radius:10px;padding:11px 14px;background:${bgClr}">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-            <span style="font-weight:600;font-size:13px;color:${isOcc?c.c:"#e8e6f0"}">${esc(u.name)}</span>
-            <span style="font-size:10px;font-weight:600;color:${isOcc?"#fff":"#8b86a8"};background:${isOcc?c.c:"#2a2a3d"};border-radius:20px;padding:2px 9px">${isOcc?"🔴 Occupied":"🟢 Free"}</span>
+            <span style="font-weight:600;font-size:13px;color:${nameClr}">${esc(u.name)}</span>
+            <span style="font-size:10px;font-weight:600;color:${statusTxt};background:${statusBg};border-radius:20px;padding:2px 9px">${statusLabel}</span>
           </div>
           <div style="font-size:11px;color:#8b86a8">${u.floor?u.floor+" · ":""}${u.beds} bed${u.beds!==1?"s":""} · ${fmt(u.price)}/night</div>
           ${cur?`<div style="font-size:11px;color:${c.c};margin-top:5px;padding-top:5px;border-top:1px solid ${c.c}22">👤 ${esc(cur.guest)} · checks out ${cur.checkOut}${cur.checkOutTime?" at "+fmtTime(cur.checkOutTime):""}</div>`:""}
+          ${isBooked&&upcoming?`<div style="font-size:11px;color:#f59e0b;margin-top:5px;padding-top:5px;border-top:1px solid #f59e0b22">📅 ${esc(upcoming.guest)} checks in ${upcoming.checkIn}${upcoming.checkInTime?" at "+fmtTime(upcoming.checkInTime):""}</div>`:""}
         </div>`;
       }).join("")}
     </div>
