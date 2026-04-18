@@ -105,8 +105,9 @@ tbody tr:hover td{background:#1a1a26;cursor:pointer}
 .pw-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#8b86a8;cursor:pointer;font-size:12px;padding:0}
 .btn-login{width:100%;padding:12px;font-size:14px;font-weight:600;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;cursor:pointer;margin-top:16px;box-shadow:0 4px 24px rgba(124,58,237,.4)}
 @keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-.ticker{animation:ticker 9s linear infinite}
+.ticker{animation:ticker 14s linear infinite}
 .ticker:hover{animation-play-state:paused}
+.ticker-wrap{overflow:hidden;margin-top:6px;padding-top:6px;border-radius:6px;padding:5px 8px;height:26px;display:flex;align-items:center}
 .wa-float{position:fixed;bottom:18px;right:18px;width:48px;height:48px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;z-index:100;box-shadow:0 4px 18px rgba(37,211,102,.5);text-decoration:none}
 </style>
 </head>
@@ -640,16 +641,18 @@ function renderDashboard(){
             <span style="font-size:10px;font-weight:600;color:${statusTxt};background:${statusBg};border-radius:20px;padding:2px 9px">${statusLabel}</span>
           </div>
           <div style="font-size:11px;color:#8b86a8">${u.floor?u.floor+" · ":""}${u.beds} bed${u.beds!==1?"s":""} · ${fmt(u.price)}/night</div>
-          ${cur?`<div style="overflow:hidden;margin-top:5px;padding-top:5px;border-top:1px solid ${c.c}22;height:18px">
-            <div class="ticker" style="font-size:11px;color:${c.c};white-space:nowrap;display:inline-block">
-              👤 ${esc(cur.guest)} &nbsp;·&nbsp; checks out ${cur.checkOut}${cur.checkOutTime?" at "+fmtTime(cur.checkOutTime):""} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-              👤 ${esc(cur.guest)} &nbsp;·&nbsp; checks out ${cur.checkOut}${cur.checkOutTime?" at "+fmtTime(cur.checkOutTime):""}
+          ${cur?`
+          <div class="ticker-wrap" style="margin-top:6px;border-top:1px solid ${c.c}22;background:${c.c}11">
+            <div class="ticker" style="font-size:12px;font-weight:500;color:${c.c};white-space:nowrap;display:inline-block;letter-spacing:.01em">
+              👤 &nbsp;<strong>${esc(cur.guest)}</strong>&nbsp; · &nbsp;Checks out:&nbsp;<strong>${cur.checkOut}</strong>${cur.checkOutTime?`&nbsp;at&nbsp;<strong>${fmtTime(cur.checkOutTime)}</strong>`:""}&nbsp;&nbsp;&nbsp;⬥&nbsp;&nbsp;&nbsp;
+              👤 &nbsp;<strong>${esc(cur.guest)}</strong>&nbsp; · &nbsp;Checks out:&nbsp;<strong>${cur.checkOut}</strong>${cur.checkOutTime?`&nbsp;at&nbsp;<strong>${fmtTime(cur.checkOutTime)}</strong>`:""}
             </div>
           </div>`:""}
-          ${isBooked&&upcoming?`<div style="overflow:hidden;margin-top:5px;padding-top:5px;border-top:1px solid #f59e0b22;height:18px">
-            <div class="ticker" style="font-size:11px;color:#f59e0b;white-space:nowrap;display:inline-block">
-              📅 ${esc(upcoming.guest)} checks in ${upcoming.checkIn}${upcoming.checkInTime?" at "+fmtTime(upcoming.checkInTime):""} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-              📅 ${esc(upcoming.guest)} checks in ${upcoming.checkIn}${upcoming.checkInTime?" at "+fmtTime(upcoming.checkInTime):""}
+          ${isBooked&&upcoming?`
+          <div class="ticker-wrap" style="margin-top:6px;border-top:1px solid #f59e0b22;background:#f59e0b11">
+            <div class="ticker" style="font-size:12px;font-weight:500;color:#f59e0b;white-space:nowrap;display:inline-block;letter-spacing:.01em">
+              📅 &nbsp;<strong>${esc(upcoming.guest)}</strong>&nbsp; · &nbsp;Checks in:&nbsp;<strong>${upcoming.checkIn}</strong>${upcoming.checkInTime?`&nbsp;at&nbsp;<strong>${fmtTime(upcoming.checkInTime)}</strong>`:""}&nbsp;&nbsp;&nbsp;⬥&nbsp;&nbsp;&nbsp;
+              📅 &nbsp;<strong>${esc(upcoming.guest)}</strong>&nbsp; · &nbsp;Checks in:&nbsp;<strong>${upcoming.checkIn}</strong>${upcoming.checkInTime?`&nbsp;at&nbsp;<strong>${fmtTime(upcoming.checkInTime)}</strong>`:""}
             </div>
           </div>`:""}
 
