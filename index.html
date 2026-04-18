@@ -312,35 +312,48 @@ window.selectProp = function(id){S.selProp=id;S.bookings=[];loadBookings();rende
 //  BOOKING ACTIONS
 // ═══════════════════════════════════════════
 window.addBooking = async function(){
-  S.formErr="";S.formOk="";
+  const errEl = document.getElementById("b-err");
+  const okEl  = document.getElementById("b-ok");
+  if(errEl) errEl.textContent="";
+  if(okEl)  okEl.textContent="";
+
   const f={
-    guest:   document.getElementById("b-guest")?.value?.trim(),
-    email:   document.getElementById("b-email")?.value?.trim(),
-    phone:   document.getElementById("b-phone")?.value?.trim(),
-    unitId:  document.getElementById("b-unit")?.value,
-    checkIn: document.getElementById("b-cin")?.value,
-    checkOut:document.getElementById("b-cout")?.value,
+    guest:       document.getElementById("b-guest")?.value?.trim(),
+    email:       document.getElementById("b-email")?.value?.trim(),
+    phone:       document.getElementById("b-phone")?.value?.trim(),
+    unitId:      document.getElementById("b-unit")?.value,
+    checkIn:     document.getElementById("b-cin")?.value,
+    checkOut:    document.getElementById("b-cout")?.value,
     checkInTime: document.getElementById("b-cintime")?.value||"",
     checkOutTime:document.getElementById("b-couttime")?.value||"",
-    status:  document.getElementById("b-status")?.value,
-    payment: document.getElementById("b-pay")?.value,
-    notes:   document.getElementById("b-notes")?.value?.trim(),
+    status:      document.getElementById("b-status")?.value,
+    payment:     document.getElementById("b-pay")?.value,
+    notes:       document.getElementById("b-notes")?.value?.trim(),
   };
-  if(!f.guest){S.formErr="Guest name required.";render();return;}
-  if(!f.email){S.formErr="Email required.";render();return;}
-  if(!f.unitId){S.formErr="Please select a unit.";render();return;}
-  if(!f.checkIn||!f.checkOut){S.formErr="Dates required.";render();return;}
-  if(f.checkOut<=f.checkIn){S.formErr="Check-out must be after check-in.";render();return;}
+
+  const showErr = msg => { if(errEl) errEl.textContent=msg; };
+  if(!f.guest)  { showErr("Guest name required.");    return; }
+  if(!f.email)  { showErr("Email required.");         return; }
+  if(!f.unitId) { showErr("Please select a unit.");   return; }
+  if(!f.checkIn||!f.checkOut){ showErr("Dates required."); return; }
+  if(f.checkOut<=f.checkIn)  { showErr("Check-out must be after check-in."); return; }
+
   try{
     await db.collection("bookings").add({...f,propertyId:S.selProp,created:TS(),createdBy:S.user.email});
     const u=getUnit(f.unitId);
     const total=nts(f.checkIn,f.checkOut)*(u?.price||0);
-    const msg=encodeURIComponent(`Hello ${f.guest}! 🏠\n\nYour booking at *${curProp()?.name}* is confirmed.\n\n📍 Unit: ${u?.name}\n📅 Check-in: ${f.checkIn}\n📅 Check-out: ${f.checkOut}\n🌙 Nights: ${nts(f.checkIn,f.checkOut)}\n💰 Total: ${fmt(total)}\n\nThank you! 🙏`);
-    S.formOk="Reservation saved!";render();
-    setTimeout(()=>{S.formOk="";render();},3000);
+    const msg=encodeURIComponent(`Hello ${f.guest}! 🏠\n\nYour booking at *${curProp()?.name}* is confirmed.\n\n📍 Unit: ${u?.name}\n📅 Check-in: ${f.checkIn}${f.checkInTime?" at "+f.checkInTime:""}\n📅 Check-out: ${f.checkOut}${f.checkOutTime?" at "+f.checkOutTime:""}\n🌙 Nights: ${nts(f.checkIn,f.checkOut)}\n💰 Total: ${fmt(total)}\n\nThank you! 🙏`);
+    if(okEl){ okEl.textContent="✅ Reservation saved!"; setTimeout(()=>{if(okEl)okEl.textContent="";},4000); }
+    // Reset form fields manually without full re-render
+    ["b-guest","b-email","b-phone","b-notes"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+    ["b-unit","b-cintime","b-couttime","b-status","b-pay"].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+    ["b-cin","b-cout"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+    const preview=document.getElementById("total-preview");if(preview)preview.innerHTML="";
     const phone=fmtWA(f.phone||"");
-    if(phone.length>=10&&confirm("Send WhatsApp confirmation to guest?"))window.open(`https://wa.me/${phone}?text=${msg}`,"_blank");
-  }catch(e){S.formErr="Error: "+e.message;render();}
+    if(phone.length>=10&&confirm("Send WhatsApp confirmation to guest?")){
+      window.open(`https://wa.me/${phone}?text=${msg}`,"_blank");
+    }
+  }catch(e){ showErr("Error: "+e.message); }
 };
 
 window.delBooking = async function(id){
@@ -481,7 +494,24 @@ window.setReportMonth = function(v){S.reportMonth=Number(v);render();};
 window.setReportYear  = function(v){S.reportYear=Number(v);render();};
 window.setSearch = function(v){S.search=v;render();};
 window.setFilter = function(v){S.filterStatus=v;render();};
-window.refreshTotal = function(){render();};
+window.refreshTotal = function(){
+  const unitId = document.getElementById("b-unit")?.value;
+  const cin    = document.getElementById("b-cin")?.value;
+  const cout   = document.getElementById("b-cout")?.value;
+  const preview= document.getElementById("total-preview");
+  if(!preview) return;
+  if(unitId && cin && cout && cout > cin){
+    const u = getUnit(unitId);
+    const total = nts(cin, cout) * (u?.price || 0);
+    preview.innerHTML = `<div class="info-box">
+      <span style="color:#8b86a8">Estimated total: </span>
+      <span style="font-weight:600;color:#9d65f5">${fmt(total)}</span>
+      <span style="color:#8b86a8"> (${nts(cin,cout)} nights × ${fmt(u?.price||0)})</span>
+    </div>`;
+  } else {
+    preview.innerHTML = "";
+  }
+};
 window.updateEditForm = function(k,v){if(S.editForm)S.editForm[k]=v;};
 
 // ═══════════════════════════════════════════
@@ -746,11 +776,11 @@ function renderNewBooking(){
     <label>Special notes</label>
     <textarea id="b-notes" placeholder="Special requests…"></textarea>
     <div id="total-preview"></div>
-    ${S.formErr?`<div class="err">${esc(S.formErr)}</div>`:""}
-    ${S.formOk?`<div class="ok">${esc(S.formOk)}</div>`:""}
+    <div id="b-err" class="err"></div>
+    <div id="b-ok" class="ok"></div>
     <div style="display:flex;gap:10px">
       <button class="btnp" onclick="addBooking()">Save Reservation</button>
-      <button class="btn" onclick="render()">Clear</button>
+      <button class="btn" onclick="goTo('New Booking')">Clear</button>
     </div>
     <div style="font-size:11px;color:#5a5475;margin-top:10px">💬 You'll be prompted to send a WhatsApp confirmation after saving.</div>
   </div>`;
