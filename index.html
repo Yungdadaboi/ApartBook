@@ -18,9 +18,13 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.6)}
 ::-webkit-scrollbar-thumb{background:#3a3a55;border-radius:3px}
 .splash{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:14px}
 .splash p{color:#8b86a8;font-size:14px}
-.hdr{background:#12121a;border-bottom:1px solid #2a2a3d;padding:0 8px;display:flex;align-items:center;position:sticky;top:0;z-index:50;overflow-x:auto;min-height:48px}
-.hdr-tabs{display:flex;align-items:center;flex:1;overflow-x:auto;min-width:0}
+.hdr{background:#12121a;border-bottom:1px solid #2a2a3d;position:sticky;top:0;z-index:50}
+.hdr-top{display:flex;align-items:center;padding:0 10px;height:48px;gap:8px;border-bottom:1px solid #2a2a3d}
+.hdr-tabs{display:flex;align-items:center;overflow-x:auto;padding:0 8px;height:40px;gap:2px;scrollbar-width:none}
 .hdr-tabs::-webkit-scrollbar{display:none}
+.hdr-tabs button{background:none;border:none;border-bottom:2px solid transparent;padding:8px 11px;font-size:12px;cursor:pointer;color:#8b86a8;white-space:nowrap;flex-shrink:0;height:100%;transition:color .2s}
+.hdr-tabs button.active{border-bottom-color:#9d65f5;color:#9d65f5;font-weight:500}
+.hdr-tabs button:hover{color:#e8e6f0}
 .logo-wrap{display:flex;align-items:center;gap:8px;margin-right:10px;padding:10px 0;flex-shrink:0}
 .logo-txt{font-size:14px;font-weight:800;background:linear-gradient(135deg,#c4b5fd,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap}
 .tab-btn{background:none;border:none;border-bottom:2px solid transparent;padding:12px 8px 10px;font-size:11px;cursor:pointer;color:#8b86a8;white-space:nowrap;flex-shrink:0}
@@ -574,29 +578,38 @@ function renderLogin(){
 // ═══════════════════════════════════════════
 function renderHeader(){
   const tabs=[{n:"Dashboard",s:true},{n:"Properties",s:isAdmin()},{n:"New Booking",s:isMgr()},{n:"Bookings",s:true},{n:"Customers",s:isMgr()},{n:"Calendar",s:true},{n:"Reports",s:isMgr()},{n:"Staff",s:isAdmin()},{n:"Audit",s:isAdmin()}].filter(t=>t.s);
-  const propSel=S.properties.length>1?`<select onchange="selectProp(this.value)" style="background:#1a1a26;border:1px solid #3a3a55;border-radius:7px;color:#e8e6f0;padding:4px 7px;font-size:11px;margin-right:5px;flex-shrink:0;outline:none;max-width:100px;overflow:hidden;text-overflow:ellipsis">${S.properties.map(p=>`<option value="${p._id}" ${p._id===S.selProp?"selected":""}>${esc(p.name)}</option>`).join("")}</select>`:curProp()?`<span style="font-size:10px;color:#8b86a8;margin-right:5px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;border-right:1px solid #2a2a3d;padding-right:5px">${esc(curProp().name)}</span>`:"";
+  const propSel=S.properties.length>1
+    ?`<select onchange="selectProp(this.value)" style="background:#1a1a26;border:1px solid #3a3a55;border-radius:7px;color:#e8e6f0;padding:3px 6px;font-size:11px;outline:none;max-width:110px;flex-shrink:0">${S.properties.map(p=>`<option value="${p._id}" ${p._id===S.selProp?"selected":""}>${esc(p.name)}</option>`).join("")}</select>`
+    :curProp()
+    ?`<span style="font-size:11px;color:#8b86a8;padding:3px 8px;background:#1a1a26;border:1px solid #2a2a3d;border-radius:7px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0">${esc(curProp().name)}</span>`
+    :"";
   return `
   <div class="hdr">
-    <div class="logo-wrap" style="flex-shrink:0">${LOGO(26)}<span class="logo-txt">ApartBook</span></div>
-    <div class="hdr-tabs">
-      ${propSel}
-      ${tabs.map(t=>`<button class="tab-btn ${S.tab===t.n?"active":""}" onclick="goTo('${t.n}')">${t.n}</button>`).join("")}
-    </div>
-    <div class="user-area" style="display:flex;align-items:center;gap:6px;flex-shrink:0;padding-left:6px">
-      <!-- compact user chip -->
-      <div style="display:flex;align-items:center;gap:5px;background:#1a1a26;border:1px solid #3a3a55;border-radius:8px;padding:4px 8px 4px 5px;flex-shrink:0">
-        ${av(S.user.email,24)}
-        <div style="max-width:74px">
-          <div style="font-size:10px;color:#e8e6f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(S.user.email.split("@")[0])}</div>
-          <div style="font-size:9px;color:${RC[S.profile?.role]||"#8b86a8"};text-transform:capitalize">${esc(S.profile?.role||"")}</div>
-        </div>
+    <!-- Row 1: Logo + Property + User -->
+    <div class="hdr-top">
+      <div style="display:flex;align-items:center;gap:7px;flex-shrink:0">
+        ${LOGO(26)}
+        <span style="font-size:14px;font-weight:800;background:linear-gradient(135deg,#c4b5fd,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap">ApartBook</span>
       </div>
-      <!-- always visible sign out -->
-      <button onclick="doLogout()" title="Sign out"
-        style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:#2d0d0d;border:1px solid rgba(239,68,68,.5);border-radius:8px;padding:5px 8px;cursor:pointer;gap:1px;flex-shrink:0">
-        <span style="font-size:14px;line-height:1">⏻</span>
-        <span style="font-size:8px;color:#ef4444;font-weight:600;letter-spacing:.03em">OUT</span>
-      </button>
+      ${propSel}
+      <div style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <div style="display:flex;align-items:center;gap:5px;background:#1a1a26;border:1px solid #3a3a55;border-radius:8px;padding:4px 8px 4px 5px">
+          ${av(S.user.email,22)}
+          <div style="max-width:80px">
+            <div style="font-size:10px;color:#e8e6f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(S.user.email.split("@")[0])}</div>
+            <div style="font-size:9px;color:${RC[S.profile?.role]||"#8b86a8"};text-transform:capitalize">${esc(S.profile?.role||"")}</div>
+          </div>
+        </div>
+        <button onclick="doLogout()" title="Sign out"
+          style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:#2d0d0d;border:1px solid rgba(239,68,68,.5);border-radius:8px;padding:5px 9px;cursor:pointer;gap:1px;flex-shrink:0">
+          <span style="font-size:14px;line-height:1;color:#ef4444">⏻</span>
+          <span style="font-size:8px;color:#ef4444;font-weight:700;letter-spacing:.04em">OUT</span>
+        </button>
+      </div>
+    </div>
+    <!-- Row 2: Tabs (scrollable) -->
+    <div class="hdr-tabs">
+      ${tabs.map(t=>`<button class="${S.tab===t.n?"active":""}" onclick="goTo('${t.n}')">${t.n}</button>`).join("")}
     </div>
   </div>`;
 }
