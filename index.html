@@ -104,8 +104,10 @@ tbody tr:hover td{background:#1a1a26;cursor:pointer}
 .pw-wrap input{margin-bottom:0;padding-right:46px}
 .pw-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#8b86a8;cursor:pointer;font-size:12px;padding:0}
 .btn-login{width:100%;padding:12px;font-size:14px;font-weight:600;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;cursor:pointer;margin-top:16px;box-shadow:0 4px 24px rgba(124,58,237,.4)}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.ticker{animation:ticker 9s linear infinite}
+.ticker:hover{animation-play-state:paused}
 .wa-float{position:fixed;bottom:18px;right:18px;width:48px;height:48px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;z-index:100;box-shadow:0 4px 18px rgba(37,211,102,.5);text-decoration:none}
-@media(max-width:480px){.main{padding:12px 10px}.login-card{padding:22px 16px}}
 </style>
 </head>
 <body>
@@ -638,8 +640,19 @@ function renderDashboard(){
             <span style="font-size:10px;font-weight:600;color:${statusTxt};background:${statusBg};border-radius:20px;padding:2px 9px">${statusLabel}</span>
           </div>
           <div style="font-size:11px;color:#8b86a8">${u.floor?u.floor+" · ":""}${u.beds} bed${u.beds!==1?"s":""} · ${fmt(u.price)}/night</div>
-          ${cur?`<div style="font-size:11px;color:${c.c};margin-top:5px;padding-top:5px;border-top:1px solid ${c.c}22">👤 ${esc(cur.guest)} · checks out ${cur.checkOut}${cur.checkOutTime?" at "+fmtTime(cur.checkOutTime):""}</div>`:""}
-          ${isBooked&&upcoming?`<div style="font-size:11px;color:#f59e0b;margin-top:5px;padding-top:5px;border-top:1px solid #f59e0b22">📅 ${esc(upcoming.guest)} checks in ${upcoming.checkIn}${upcoming.checkInTime?" at "+fmtTime(upcoming.checkInTime):""}</div>`:""}
+          ${cur?`<div style="overflow:hidden;margin-top:5px;padding-top:5px;border-top:1px solid ${c.c}22;height:18px">
+            <div class="ticker" style="font-size:11px;color:${c.c};white-space:nowrap;display:inline-block">
+              👤 ${esc(cur.guest)} &nbsp;·&nbsp; checks out ${cur.checkOut}${cur.checkOutTime?" at "+fmtTime(cur.checkOutTime):""} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+              👤 ${esc(cur.guest)} &nbsp;·&nbsp; checks out ${cur.checkOut}${cur.checkOutTime?" at "+fmtTime(cur.checkOutTime):""}
+            </div>
+          </div>`:""}
+          ${isBooked&&upcoming?`<div style="overflow:hidden;margin-top:5px;padding-top:5px;border-top:1px solid #f59e0b22;height:18px">
+            <div class="ticker" style="font-size:11px;color:#f59e0b;white-space:nowrap;display:inline-block">
+              📅 ${esc(upcoming.guest)} checks in ${upcoming.checkIn}${upcoming.checkInTime?" at "+fmtTime(upcoming.checkInTime):""} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+              📅 ${esc(upcoming.guest)} checks in ${upcoming.checkIn}${upcoming.checkInTime?" at "+fmtTime(upcoming.checkInTime):""}
+            </div>
+          </div>`:""}
+
         </div>`;
       }).join("")}
     </div>
