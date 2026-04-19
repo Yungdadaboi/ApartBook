@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+<title>ApartBook</title>
+<meta name="theme-color" content="#7c3aed"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="ApartBook"/>
+<link rel="manifest" href="manifest.json"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:#0a0a0f;color:#e8e6f0;font-family:system-ui,-apple-system,sans-serif;min-height:100vh;overflow-x:hidden}
+input,select,textarea,button{font-family:inherit;font-size:inherit}
+input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.6)}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:#3a3a55;border-radius:3px}
+.splash{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:14px}
+.splash p{color:#8b86a8;font-size:14px}
+.hdr{background:#12121a;border-bottom:1px solid #2a2a3d;position:sticky;top:0;z-index:50}
+.hdr-top{display:flex;align-items:center;padding:0 10px;height:48px;gap:8px;border-bottom:1px solid #2a2a3d}
+.hdr-tabs{display:flex;align-items:center;overflow-x:auto;padding:0 8px;height:40px;gap:2px;scrollbar-width:none}
+.hdr-tabs::-webkit-scrollbar{display:none}
+.hdr-tabs button{background:none;border:none;border-bottom:2px solid transparent;padding:8px 11px;font-size:12px;cursor:pointer;color:#8b86a8;white-space:nowrap;flex-shrink:0;height:100%;transition:color .2s}
+.hdr-tabs button.active{border-bottom-color:#9d65f5;color:#9d65f5;font-weight:500}
+.hdr-tabs button:hover{color:#e8e6f0}
+.logo-wrap{display:flex;align-items:center;gap:8px;margin-right:10px;padding:10px 0;flex-shrink:0}
+.logo-txt{font-size:14px;font-weight:800;background:linear-gradient(135deg,#c4b5fd,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap}
+.tab-btn{background:none;border:none;border-bottom:2px solid transparent;padding:12px 8px 10px;font-size:11px;cursor:pointer;color:#8b86a8;white-space:nowrap;flex-shrink:0}
+.tab-btn.active{border-bottom-color:#9d65f5;color:#9d65f5;font-weight:500}
+.user-area{margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0;padding-left:8px}
+.user-chip{display:flex;align-items:center;gap:6px;border:1px solid #3a3a55;border-radius:8px;padding:4px 8px 4px 6px;flex-shrink:0}
+.btn-logout{display:flex;align-items:center;gap:5px;background:#2d0d0d;border:1px solid rgba(239,68,68,.35);border-radius:8px;padding:6px 10px;cursor:pointer;color:#ef4444;font-size:11px;font-weight:500;white-space:nowrap}
+.main{padding:16px 12px;max-width:980px;margin:0 auto}
+.pg-title{font-size:17px;font-weight:600;margin-bottom:14px}
+.card{background:#12121a;border:1px solid #2a2a3d;border-radius:12px;padding:16px 18px;margin-bottom:14px}
+.card-title{font-size:14px;font-weight:600;margin-bottom:12px}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}
+.stat{background:#12121a;border:1px solid #2a2a3d;border-radius:12px;padding:12px 14px}
+.stat-l{font-size:11px;color:#8b86a8;margin-bottom:4px}
+.stat-v{font-size:20px;font-weight:700}
+.stat.wide{grid-column:1/-1}
+.unit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100%,1fr));gap:8px}
+@media(min-width:500px){.unit-grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}.stats{grid-template-columns:repeat(3,1fr)}}
+.frow{display:flex;gap:10px;flex-wrap:wrap}
+.fcol{flex:1;min-width:140px}
+label{font-size:12px;color:#8b86a8;display:block;margin-bottom:4px}
+input,select,textarea{width:100%;background:#1a1a26;border:1px solid #3a3a55;border-radius:8px;color:#e8e6f0;padding:8px 12px;font-size:13px;margin-bottom:10px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:#7c3aed}
+textarea{resize:vertical;min-height:66px}
+.btn{background:none;border:1px solid #3a3a55;border-radius:8px;padding:7px 14px;cursor:pointer;font-size:12px;color:#e8e6f0}
+.btn:hover{border-color:#7c3aed;color:#9d65f5}
+.btnp{background:#7c3aed;border:none;border-radius:8px;padding:9px 20px;cursor:pointer;font-size:13px;color:#fff;font-weight:500}
+.btnp:hover{background:#6d28d9}
+.btnd{background:none;border:1px solid rgba(239,68,68,.35);border-radius:8px;padding:7px 14px;cursor:pointer;font-size:12px;color:#ef4444}
+.btnwa{background:#0a2d1a;border:1px solid rgba(37,211,102,.35);border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;color:#25d366;display:flex;align-items:center;gap:7px;font-weight:500;width:100%;justify-content:center;margin-bottom:8px}
+.btnpay{background:#0d2d1a;border:1px solid rgba(34,197,94,.35);border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;color:#22c55e;display:flex;align-items:center;gap:7px;font-weight:500;width:100%;justify-content:center;margin-bottom:8px}
+.tblw{overflow-x:auto;border:1px solid #2a2a3d;border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:9px 11px;border-bottom:1px solid #2a2a3d;color:#8b86a8;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;background:#1a1a26}
+td{padding:10px 11px;border-bottom:1px solid #2a2a3d;vertical-align:middle}
+tr:last-child td{border:none}
+tbody tr:hover td{background:#1a1a26;cursor:pointer}
+.badge{border-radius:6px;padding:3px 9px;font-size:11px;font-weight:500;display:inline-block}
+.av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;flex-shrink:0}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;z-index:200;padding:14px}
+.modal-box{background:#12121a;border:1px solid #2a2a3d;border-radius:14px;padding:22px;max-width:480px;width:100%;max-height:90vh;overflow-y:auto}
+.mhdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.mtitle{font-size:15px;font-weight:600}
+.dr{display:flex;border-bottom:1px solid #2a2a3d;padding:8px 0;font-size:13px}
+.dl{color:#8b86a8;width:110px;flex-shrink:0}
+.info-box{background:#1a1040;border:1px solid rgba(124,58,237,.3);border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px}
+.err{font-size:12px;color:#ef4444;margin-bottom:8px}
+.ok{font-size:12px;color:#22c55e;margin-bottom:8px}
+.unit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.cal-dn{font-size:11px;color:#8b86a8;text-align:center;padding:4px 0}
+.cal-day{min-height:56px;border:1px solid #2a2a3d;border-radius:7px;padding:3px 5px;background:#1a1a26}
+.cal-day.today{border-color:#7c3aed}
+.cal-day.hasbk{background:#1a1040}
+.cal-num{font-size:10px;color:#8b86a8;margin-bottom:2px}
+.cal-num.today{color:#9d65f5;font-weight:600}
+.cal-bk{font-size:9px;color:#fff;border-radius:3px;padding:1px 4px;margin-bottom:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.checkin-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #2a2a3d;cursor:pointer}
+.checkin-item:last-child{border:none}
+.bar-wrap{margin-bottom:13px}
+.bar-row{display:flex;justify-content:space-between;margin-bottom:4px;font-size:12px}
+.bar-bg{height:7px;background:#1a1a26;border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px}
+.prop-units{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:8px;margin-bottom:10px}
+.prop-unit{border-radius:8px;padding:9px 12px;display:flex;justify-content:space-between;align-items:center}
+.perm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.perm-card{background:#1a1a26;border-radius:8px;padding:11px 13px}
+.perm-list{margin-top:7px;padding-left:14px;font-size:11px;color:#8b86a8;line-height:1.9}
+.flex-sb{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:13px}
+.search-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.search-row input,.search-row select{flex:1;min-width:140px;margin-bottom:0}
+.empty{color:#8b86a8;font-size:13px;padding:20px;text-align:center}
+.cal-leg{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.rp-stats{display:flex;gap:18px;flex-wrap:wrap}
+.add-unit-form{background:#1a1a26;border-radius:8px;padding:13px;margin-top:8px}
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;position:relative;overflow:hidden}
+.login-glow{position:fixed;top:-15%;left:50%;transform:translateX(-50%);width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(124,58,237,.1) 0%,transparent 70%);pointer-events:none}
+.login-box{width:100%;max-width:400px;position:relative}
+.login-card{background:#12121a;border:1px solid #2a2a3d;border-radius:16px;padding:28px 26px;box-shadow:0 24px 64px rgba(124,58,237,.18)}
+.pw-wrap{position:relative;margin-bottom:6px}
+.pw-wrap input{margin-bottom:0;padding-right:46px}
+.pw-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#8b86a8;cursor:pointer;font-size:12px;padding:0}
+.btn-login{width:100%;padding:12px;font-size:14px;font-weight:600;border:none;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;cursor:pointer;margin-top:16px;box-shadow:0 4px 24px rgba(124,58,237,.4)}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.ticker{animation:ticker 14s linear infinite}
+.ticker:hover{animation-play-state:paused}
+.ticker-wrap{overflow:hidden;margin-top:6px;padding-top:6px;border-radius:6px;padding:5px 8px;height:26px;display:flex;align-items:center}
+.wa-float{position:fixed;bottom:18px;right:18px;width:48px;height:48px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;z-index:100;box-shadow:0 4px 18px rgba(37,211,102,.5);text-decoration:none}
+</style>
+</head>
+<body>
+<div id="app"><div class="splash"><p>Starting ApartBook…</p></div></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script src="https://js.paystack.co/v1/inline.js"></script>
+
+<script>
+// ═══════════════════════════════════════════
+//  FIREBASE CONFIG
+// ═══════════════════════════════════════════
+firebase.initializeApp({
+  apiKey:            "AIzaSyA_5sCpE-1J7zM0Q2LB7463TTf5_L4qLZ0",
+  authDomain:        "apartbook-lodge.firebaseapp.com",
+  projectId:         "apartbook-lodge",
+  storageBucket:     "apartbook-lodge.firebasestorage.app",
+  messagingSenderId: "162419795284",
+  appId:             "1:162419795284:web:72554612a25f9f29bad4c1"
+});
+const auth = firebase.auth();
+const db   = firebase.firestore();
+const TS   = firebase.firestore.FieldValue.serverTimestamp;
+
+// ── Paystack key ──
+const PAYSTACK_KEY = "REPLACE_WITH_YOUR_PAYSTACK_PUBLIC_KEY";
+
+// ═══════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════
+const CLRS = [
+  {c:"#7c3aed",b:"#1a1040"}, // purple
+  {c:"#2563eb",b:"#0d1f4a"}, // blue
+  {c:"#16a34a",b:"#0a2818"}, // green
+  {c:"#dc2626",b:"#2d0a0a"}, // red
+  {c:"#d97706",b:"#2d1a05"}, // amber
+  {c:"#0891b2",b:"#062730"}, // cyan
+  {c:"#c026d3",b:"#2a0a2e"}, // pink/magenta
+  {c:"#65a30d",b:"#1a2405"}, // lime
+  {c:"#ea580c",b:"#2d1005"}, // orange
+  {c:"#0d9488",b:"#062420"}, // teal
+];
+const STATUSES = ["Confirmed","Pending","Cancelled","Checked-out"];
+const MN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const ROLES = ["admin","manager","staff"];
+const RC = {admin:"#22c55e",manager:"#f59e0b",staff:"#9d65f5"};
+const DEFAULT_UNITS = [
+  {id:"A1",name:"Garden Suite",    floor:"Ground",beds:1,price:45000, colorIdx:0},
+  {id:"A2",name:"City View Flat",  floor:"1st",   beds:2,price:65000, colorIdx:1},
+  {id:"A3",name:"Executive Studio",floor:"2nd",   beds:1,price:55000, colorIdx:2},
+  {id:"A4",name:"Family Apartment",floor:"2nd",   beds:3,price:85000, colorIdx:3},
+  {id:"A5",name:"Deluxe Loft",     floor:"3rd",   beds:2,price:75000, colorIdx:4},
+  {id:"A6",name:"Penthouse",       floor:"Top",   beds:4,price:150000,colorIdx:5},
+];
+
+// ═══════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════
+const fmt  = n  => "₦" + Number(n).toLocaleString();
+const nts  = (a,b) => Math.max(0,(new Date(b)-new Date(a))/86400000);
+const ini  = n  => (n||"?").split(" ").map(x=>x[0]).join("").slice(0,2).toUpperCase();
+const tod  = ()  => new Date().toISOString().split("T")[0];
+const esc  = s  => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const clr  = i  => CLRS[i % CLRS.length] || CLRS[0];
+const fmtWA= p  => { const d=String(p||"").replace(/\D/g,""); return d.startsWith("0")?"234"+d.slice(1):d.startsWith("234")?d:d; };
+
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+const S = {
+  user:null, profile:null, tab:"Dashboard",
+  bookings:[], properties:[], selProp:null,
+  staff:[], auditLog:[],
+  sel:null, editMode:false, editForm:null,
+  search:"", filterStatus:"All",
+  cal:{y:new Date().getFullYear(), m:new Date().getMonth()},
+  delId:null,
+  reportMonth:new Date().getMonth(), reportYear:new Date().getFullYear(),
+  editingProp:null,
+  formErr:"", formOk:"",
+  propErr:"", propOk:"",
+  loginErr:"", loginBusy:false, showPw:false,
+};
+
+// ── Computed ──
+const curProp  = () => S.properties.find(p=>p._id===S.selProp)||null;
+const allUnits = () => curProp()?.units||[];
+const getUnit  = id => allUnits().find(u=>u.id===id)||null;
+const isAdmin  = () => S.profile?.role==="admin";
+const isMgr    = () => ["admin","manager"].includes(S.profile?.role);
+const occupied = () => {
+  const t=tod();
+  return new Set(S.bookings.filter(b=>b.checkIn<=t&&b.checkOut>t&&b.status==="Confirmed").map(b=>b.unitId));
+};
+
+// ═══════════════════════════════════════════
+//  SVG LOGO
+// ═══════════════════════════════════════════
+const LOGO = (sz=32) => `<svg width="${sz}" height="${sz}" viewBox="0 0 36 36" fill="none">
+  <rect width="36" height="36" rx="9" fill="#1a1040"/>
+  <rect x="1" y="1" width="34" height="34" rx="8.5" stroke="#7c3aed" stroke-opacity=".6"/>
+  <rect x="8" y="16" width="20" height="14" rx="1.5" fill="#2d1b69"/>
+  <rect x="8" y="16" width="20" height="14" rx="1.5" stroke="#7c3aed" stroke-width="1"/>
+  <path d="M6 17L18 7L30 17" stroke="#9d65f5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="14.5" y="22" width="7" height="8" rx="1" fill="#7c3aed" opacity=".7"/>
+  <rect x="9.5" y="19" width="4" height="3.5" rx=".7" fill="#c4b5fd" opacity=".6"/>
+  <rect x="22.5" y="19" width="4" height="3.5" rx=".7" fill="#c4b5fd" opacity=".6"/>
+  <circle cx="18" cy="11.5" r="1.2" fill="#c4b5fd"/>
+</svg>`;
+
+// ═══════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════
+const statusBadge = s => {
+  const map={Confirmed:"background:#0d2d1a;color:#22c55e",Pending:"background:#2d1f0d;color:#f59e0b",Cancelled:"background:#2d0d0d;color:#ef4444","Checked-out":"background:#1a1040;color:#a78bfa"};
+  return `<span class="badge" style="${map[s]||""}">${esc(s)}</span>`;
+};
+const payBadge = p => {
+  const c={Paid:"#22c55e",Partial:"#f59e0b",Unpaid:"#ef4444"}[p]||"#8b86a8";
+  return `<span style="color:${c};font-size:12px;font-weight:500">${esc(p)}</span>`;
+};
+const unitChip = u => {
+  if(!u) return "—";
+  const c=clr(u.colorIdx||0);
+  return `<span class="badge" style="background:${c.b};color:${c.c};border:1px solid ${c.c}33">${esc(u.name)}</span>`;
+};
+const roleBadge = r => {
+  const c=RC[r]||"#8b86a8";
+  return `<span class="badge" style="background:${c}22;color:${c};border:1px solid ${c}44;text-transform:capitalize">${esc(r||"staff")}</span>`;
+};
+const av = (name,sz=28,bg="#2d1b69",brd="#7c3aed",col="#9d65f5") =>
+  `<div class="av" style="width:${sz}px;height:${sz}px;font-size:${sz*0.36}px;background:${bg};border:1.5px solid ${brd};color:${col}">${ini(name)}</div>`;
+
+// ═══════════════════════════════════════════
+//  FIREBASE: AUTH
+// ═══════════════════════════════════════════
+window.doLogin = async function() {
+  const email=document.getElementById("li-email")?.value?.trim();
+  const pass=document.getElementById("li-pass")?.value;
+  if(!email||!pass){S.loginErr="Please enter email and password.";render();return;}
+  S.loginBusy=true;S.loginErr="";render();
+  try{
+    const cred=await auth.signInWithEmailAndPassword(email,pass);
+    await db.collection("audit_log").add({userId:cred.user.uid,email:cred.user.email,action:"LOGIN",timestamp:TS(),device:navigator.userAgent.slice(0,100)});
+  }catch(e){
+    const c=e.code||"";
+    S.loginErr=(c.includes("user-not-found")||c.includes("wrong-password")||c.includes("invalid-credential"))?"Invalid email or password.":"Error: "+e.message;
+    S.loginBusy=false;render();
+  }
+};
+
+window.doLogout = async function() {
+  try{await db.collection("audit_log").add({userId:S.user.uid,email:S.user.email,action:"LOGOUT",timestamp:TS(),device:navigator.userAgent.slice(0,100)});}catch(_){}
+  auth.signOut();
+};
+
+// ═══════════════════════════════════════════
+//  FIREBASE: DATA
+// ═══════════════════════════════════════════
+let bkUnsub=null, auditUnsub=null, staffUnsub=null;
+
+function loadProfile(){
+  const ref=db.collection("users").doc(S.user.uid);
+  ref.onSnapshot(async snap=>{
+    if(snap.exists){S.profile=snap.data();}
+    else{
+      const all=await db.collection("users").limit(1).get();
+      const data={email:S.user.email,name:S.user.email.split("@")[0],role:all.empty?"admin":"staff",createdAt:TS()};
+      await ref.set(data);S.profile=data;
+    }
+    render();
+  });
+}
+
+function loadProperties(){
+  db.collection("properties").orderBy("createdAt","asc").onSnapshot(async snap=>{
+    const props=snap.docs.map(d=>({...d.data(),_id:d.id}));
+    if(props.length===0){
+      const r=await db.collection("properties").add({name:"Main Property",address:"Enter your property address",description:"",units:DEFAULT_UNITS,createdAt:TS()});
+      S.properties=[{name:"Main Property",address:"",units:DEFAULT_UNITS,_id:r.id}];
+      S.selProp=r.id;
+    }else{
+      S.properties=props;
+      if(!S.selProp)S.selProp=props[0]._id;
+    }
+    loadBookings();render();
+  },()=>{});
+}
+
+function loadBookings(){
+  if(bkUnsub){bkUnsub();bkUnsub=null;}
+  if(!S.selProp)return;
+  bkUnsub=db.collection("bookings").where("propertyId","==",S.selProp)
+    .onSnapshot(snap=>{
+      S.bookings=snap.docs.map(d=>({...d.data(),_id:d.id})).sort((a,b)=>(b.created?.seconds||0)-(a.created?.seconds||0));
+      render();
+    },()=>{
+      db.collection("bookings").where("propertyId","==",S.selProp).get().then(snap=>{
+        S.bookings=snap.docs.map(d=>({...d.data(),_id:d.id}));render();
+      });
+    });
+}
+
+window.selectProp = function(id){S.selProp=id;S.bookings=[];loadBookings();render();};
+
+// ═══════════════════════════════════════════
+//  BOOKING ACTIONS
+// ═══════════════════════════════════════════
+window.addBooking = async function(){
+  const errEl = document.getElementById("b-err");
+  const okEl  = document.getElementById("b-ok");
+  if(errEl) errEl.textContent="";
+  if(okEl)  okEl.textContent="";
+
+  const f={
+    guest:       document.getElementById("b-guest")?.value?.trim(),
+    email:       document.getElementById("b-email")?.value?.trim(),
+    phone:       document.getElementById("b-phone")?.value?.trim(),
+    unitId:      document.getElementById("b-unit")?.value,
+    checkIn:     document.getElementById("b-cin")?.value,
+    checkOut:    document.getElementById("b-cout")?.value,
+    checkInTime: document.getElementById("b-cintime")?.value||"",
+    checkOutTime:document.getElementById("b-couttime")?.value||"",
+    status:      document.getElementById("b-status")?.value,
+    payment:     document.getElementById("b-pay")?.value,
+    notes:       document.getElementById("b-notes")?.value?.trim(),
+  };
+
+  const showErr = msg => { if(errEl) errEl.textContent=msg; };
+  if(!f.guest)  { showErr("Guest name required.");    return; }
+  if(!f.unitId) { showErr("Please select a unit.");   return; }
+  if(!f.checkIn||!f.checkOut){ showErr("Dates required."); return; }
+  if(f.checkOut<=f.checkIn)  { showErr("Check-out must be after check-in."); return; }
+
+  try{
+    await db.collection("bookings").add({...f,propertyId:S.selProp,created:TS(),createdBy:S.user.email});
+    const u=getUnit(f.unitId);
+    const total=nts(f.checkIn,f.checkOut)*(u?.price||0);
+    const msg=encodeURIComponent(`Hello ${f.guest}! 🏠\n\nYour booking at *${curProp()?.name}* is confirmed.\n\n📍 Unit: ${u?.name}\n📅 Check-in: ${f.checkIn}${f.checkInTime?" at "+f.checkInTime:""}\n📅 Check-out: ${f.checkOut}${f.checkOutTime?" at "+f.checkOutTime:""}\n🌙 Nights: ${nts(f.checkIn,f.checkOut)}\n💰 Total: ${fmt(total)}\n\nThank you! 🙏`);
+    if(okEl){ okEl.textContent="✅ Reservation saved!"; setTimeout(()=>{if(okEl)okEl.textContent="";},4000); }
+    // Reset form fields manually without full re-render
+    ["b-guest","b-email","b-phone","b-notes"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+    ["b-unit","b-cintime","b-couttime","b-status","b-pay"].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+    ["b-cin","b-cout"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});
+    const preview=document.getElementById("total-preview");if(preview)preview.innerHTML="";
+    const phone=fmtWA(f.phone||"");
+    if(phone.length>=10&&confirm("Send WhatsApp confirmation to guest?")){
+      window.open(`https://wa.me/${phone}?text=${msg}`,"_blank");
+    }
+  }catch(e){ showErr("Error: "+e.message); }
+};
+
+window.delBooking = async function(id){
+  try{await db.collection("bookings").doc(id).delete();}catch(_){}
+  S.sel=null;S.delId=null;render();
+};
+
+window.saveEdit = async function(){
+  const f=S.editForm;
+  if(!f?.guest||!f?.checkIn||!f?.checkOut||f.checkOut<=f.checkIn)return;
+  const{_id,...data}=f;
+  try{await db.collection("bookings").doc(_id).update({...data,updatedBy:S.user.email,updatedAt:TS()});S.sel={...f};S.editMode=false;render();}
+  catch(e){alert("Error: "+e.message);}
+};
+
+window.qStatus = async function(id,status){
+  try{await db.collection("bookings").doc(id).update({status,updatedBy:S.user.email,updatedAt:TS()});}catch(_){}
+  if(S.sel?._id===id)S.sel={...S.sel,status};
+  render();
+};
+
+// ═══════════════════════════════════════════
+//  PAYSTACK + WHATSAPP
+// ═══════════════════════════════════════════
+window.openPaystack = function(bid){
+  const b=S.bookings.find(x=>x._id===bid);if(!b)return;
+  const u=getUnit(b.unitId);
+  const total=nts(b.checkIn,b.checkOut)*(u?.price||0);
+  if(!window.PaystackPop){alert("Paystack not loaded.");return;}
+  if(PAYSTACK_KEY.includes("REPLACE")){alert("Add your Paystack key in the code first.");return;}
+  window.PaystackPop.setup({
+    key:PAYSTACK_KEY,email:b.email,amount:total*100,currency:"NGN",ref:"APT-"+Date.now(),
+    onClose:()=>{},
+    callback:async res=>{
+      await db.collection("bookings").doc(bid).update({payment:"Paid",paystackRef:res.reference,updatedBy:S.user.email,updatedAt:TS()});
+      S.sel={...b,payment:"Paid",paystackRef:res.reference};
+      alert("✅ Payment successful! Ref: "+res.reference);render();
+    }
+  }).openIframe();
+};
+
+window.sendWA = function(bid){
+  const b=S.bookings.find(x=>x._id===bid);if(!b)return;
+  const u=getUnit(b.unitId);
+  const total=nts(b.checkIn,b.checkOut)*(u?.price||0);
+  const msg=encodeURIComponent(`Hello ${b.guest}! 🏠\n\nBooking at *${curProp()?.name}*\n📍 Unit: ${u?.name||"—"}\n📅 In: ${b.checkIn} Out: ${b.checkOut}\n🌙 ${nts(b.checkIn,b.checkOut)} nights\n💰 ${fmt(total)} | ${b.payment}\n\nThank you! 🙏`);
+  const phone=fmtWA(b.phone||"");
+  if(phone.length<10){alert("No valid phone number for this guest.");return;}
+  window.open(`https://wa.me/${phone}?text=${msg}`,"_blank");
+};
+
+// ═══════════════════════════════════════════
+//  PDF REPORT
+// ═══════════════════════════════════════════
+window.exportCSV = function(){
+  const units=allUnits();
+  const rows=[
+    ["ApartBook — Booking Export"],
+    [`Property: ${curProp()?.name||""}`],
+    [`Exported: ${new Date().toLocaleString()}`],
+    [],
+    ["#","Guest Name","Email","Phone","Unit","Floor","Beds","Price/Night",
+     "Check-in Date","Check-in Time","Check-out Date","Check-out Time",
+     "Nights","Total Amount","Status","Payment","Paystack Ref","Notes","Created By","Created At"],
+  ];
+  S.bookings.forEach((b,i)=>{
+    const u=units.find(x=>x.id===b.unitId)||{};
+    const nights=nts(b.checkIn,b.checkOut);
+    const total=nights*(u.price||0);
+    const fmtTime=t=>{if(!t)return"";const[h,m]=t.split(":");const hh=Number(h);return`${hh%12||12}:${m} ${hh<12?"AM":"PM"}`;};
+    const createdAt=b.created?.toDate?.()?.toLocaleString()||"";
+    rows.push([
+      i+1, b.guest||"", b.email||"", b.phone||"",
+      u.name||"", u.floor||"", u.beds||"", u.price||0,
+      b.checkIn||"", fmtTime(b.checkInTime),
+      b.checkOut||"", fmtTime(b.checkOutTime),
+      nights, total, b.status||"", b.payment||"",
+      b.paystackRef||"", b.notes||"", b.createdBy||"", createdAt,
+    ]);
+  });
+  // add summary rows at bottom
+  const paid=S.bookings.filter(b=>b.payment==="Paid").reduce((s,b)=>s+nts(b.checkIn,b.checkOut)*(units.find(u=>u.id===b.unitId)?.price||0),0);
+  rows.push([],[]);
+  rows.push(["SUMMARY"]);
+  rows.push(["Total Bookings", S.bookings.length]);
+  rows.push(["Confirmed", S.bookings.filter(b=>b.status==="Confirmed").length]);
+  rows.push(["Checked-out", S.bookings.filter(b=>b.status==="Checked-out").length]);
+  rows.push(["Cancelled", S.bookings.filter(b=>b.status==="Cancelled").length]);
+  rows.push(["Total Revenue (Paid)", paid]);
+  rows.push(["Total Units", units.length]);
+  rows.push(["Total Customers", new Set(S.bookings.map(b=>b.email||b.phone||b.guest)).size]);
+
+  const csv=rows.map(r=>r.map(c=>{
+    const s=String(c).replace(/"/g,'""');
+    return s.includes(",")||s.includes("\n")||s.includes('"')?`"${s}"`:s;
+  }).join(",")).join("\n");
+
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=`ApartBook-${curProp()?.name||"Export"}-${new Date().toISOString().split("T")[0]}.csv`;
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);URL.revokeObjectURL(url);
+};
+
+window.generatePDF = function(){
+  if(!window.jspdf){alert("PDF library not loaded yet. Try again in a moment.");return;}
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF();
+  // jsPDF cannot render ₦ — use NGN instead
+  const pfmt = n => "NGN " + Number(n).toLocaleString();
+  const mb=S.bookings.filter(b=>{const d=new Date(b.checkIn);return d.getMonth()===S.reportMonth&&d.getFullYear()===S.reportYear;});
+  const rev=mb.filter(b=>b.payment==="Paid").reduce((s,b)=>s+(getUnit(b.unitId)?.price||0)*nts(b.checkIn,b.checkOut),0);
+  const partRev=mb.filter(b=>b.payment==="Partial").reduce((s,b)=>s+(getUnit(b.unitId)?.price||0)*nts(b.checkIn,b.checkOut)*.5,0);
+  const grossRev=rev+partRev;
+  doc.setFillColor(26,16,64);doc.rect(0,0,210,42,"F");
+  doc.setTextColor(196,181,253);doc.setFontSize(22);doc.setFont("helvetica","bold");doc.text("ApartBook",14,18);
+  doc.setFontSize(11);doc.setFont("helvetica","normal");doc.text("Monthly Revenue Report",14,28);
+  doc.setFontSize(10);doc.text(`${MN[S.reportMonth]} ${S.reportYear}  |  ${curProp()?.name||""}`,14,38);
+  doc.setTextColor(120,120,120);doc.setFontSize(9);doc.text(`Generated: ${new Date().toLocaleString()}  by ${S.user?.email||""}`,14,52);
+  doc.setFontSize(11);doc.setFont("helvetica","bold");doc.setTextColor(40,40,40);doc.text("Summary",14,64);
+  doc.autoTable({startY:68,head:[["Metric","Value"]],theme:"grid",
+    body:[
+      ["Total Bookings",mb.length],
+      ["Confirmed",mb.filter(b=>b.status==="Confirmed").length],
+      ["Checked-out",mb.filter(b=>b.status==="Checked-out").length],
+      ["Cancelled",mb.filter(b=>b.status==="Cancelled").length],
+      ["Fully Paid Bookings",mb.filter(b=>b.payment==="Paid").length],
+      ["Partial Payments",mb.filter(b=>b.payment==="Partial").length],
+      ["Total Monthly Gross Revenue",pfmt(grossRev)],
+    ],
+    headStyles:{fillColor:[124,58,237],textColor:255,fontStyle:"bold"},
+    styles:{fontSize:11},columnStyles:{0:{cellWidth:130}}
+  });
+  const y2=doc.lastAutoTable.finalY+10;
+  doc.setFont("helvetica","bold");doc.setFontSize(11);doc.setTextColor(40,40,40);doc.text("Booking Details",14,y2);
+  doc.autoTable({startY:y2+4,theme:"striped",
+    head:[["Guest","Unit","Check-in","Check-out","Nts","Status","Pay","Amount"]],
+    body:mb.length?mb.map(b=>[
+      b.guest||"—",
+      getUnit(b.unitId)?.name||"—",
+      b.checkIn,b.checkOut,
+      nts(b.checkIn,b.checkOut)+"",
+      b.status,b.payment,
+      pfmt((getUnit(b.unitId)?.price||0)*nts(b.checkIn,b.checkOut))
+    ]):[["No bookings this month","","","","","","",""]],
+    headStyles:{fillColor:[124,58,237],textColor:255,fontSize:9},styles:{fontSize:8}
+  });
+  const pg=doc.internal.getNumberOfPages();
+  for(let i=1;i<=pg;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(150,150,150);doc.text(`ApartBook  |  ${curProp()?.name||""}  |  Page ${i} of ${pg}`,14,287);}
+  doc.save(`ApartBook-${MN[S.reportMonth]}-${S.reportYear}.pdf`);
+};
+
+// ═══════════════════════════════════════════
+//  PROPERTY ACTIONS
+// ═══════════════════════════════════════════
+window.addProperty = async function(){
+  S.propErr="";S.propOk="";
+  const name=document.getElementById("prop-name")?.value?.trim();
+  if(!name){S.propErr="Property name required.";render();return;}
+  try{
+    await db.collection("properties").add({name,address:document.getElementById("prop-addr")?.value?.trim()||"",description:document.getElementById("prop-desc")?.value?.trim()||"",units:[],createdAt:TS(),createdBy:S.user.email});
+    S.propOk="Property added!";render();setTimeout(()=>{S.propOk="";render();},3000);
+  }catch(e){S.propErr="Error: "+e.message;render();}
+};
+
+window.addUnit = async function(propId){
+  const name=document.getElementById("u-name")?.value?.trim();
+  const price=Number(document.getElementById("u-price")?.value)||0;
+  if(!name||!price){alert("Unit name and price required.");return;}
+  const prop=S.properties.find(p=>p._id===propId);if(!prop)return;
+  const nu={id:"U"+Date.now(),name,floor:document.getElementById("u-floor")?.value?.trim()||"",beds:Number(document.getElementById("u-beds")?.value)||1,price,colorIdx:(prop.units?.length||0)%CLRS.length};
+  await db.collection("properties").doc(propId).update({units:[...(prop.units||[]),nu]});
+  S.editingProp=null;render();
+};
+
+window.deleteUnit = async function(propId,unitId){
+  if(!confirm("Delete this unit?"))return;
+  const prop=S.properties.find(p=>p._id===propId);if(!prop)return;
+  await db.collection("properties").doc(propId).update({units:(prop.units||[]).filter(u=>u.id!==unitId)});
+};
+
+window.updateRole = async function(uid,role){await db.collection("users").doc(uid).update({role});};
+
+// ═══════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════
+window.goTo = function(tab){
+  S.tab=tab;
+  S.sel=null;
+  S.editMode=false;
+  if(tab==="Audit"&&!auditUnsub){
+    auditUnsub=db.collection("audit_log").orderBy("timestamp","desc").limit(200)
+      .onSnapshot(snap=>{S.auditLog=snap.docs.map(d=>({...d.data(),_id:d.id}));render();});
+  }
+  if(tab==="Staff"&&!staffUnsub){
+    staffUnsub=db.collection("users")
+      .onSnapshot(snap=>{S.staff=snap.docs.map(d=>({...d.data(),_id:d.id}));render();});
+  }
+  render();
+  // scroll to top when switching tabs
+  window.scrollTo({top:0,behavior:"smooth"});
+};
+
+window.openSel = function(id){S.sel=S.bookings.find(x=>x._id===id)||null;render();};
+window.closeSel = function(){S.sel=null;S.editMode=false;render();};
+window.openEdit = function(){S.editMode=true;S.editForm={...S.sel};render();};
+window.setDelId = function(id){S.delId=id;render();};
+window.clearDel = function(){S.delId=null;render();};
+window.togglePw = function(){S.showPw=!S.showPw;render();};
+window.setEditProp= function(id){S.editingProp=id;render();};
+window.calPrev = function(){if(S.cal.m===0){S.cal.m=11;S.cal.y--;}else{S.cal.m--;}render();};
+window.calNext = function(){if(S.cal.m===11){S.cal.m=0;S.cal.y++;}else{S.cal.m++;}render();};
+window.setReportMonth = function(v){S.reportMonth=Number(v);render();};
+window.setReportYear  = function(v){S.reportYear=Number(v);render();};
+window.setSearch = function(v){S.search=v;render();};
+window.setFilter = function(v){S.filterStatus=v;render();};
+window.refreshTotal = function(){
+  try{
+    const unitId = document.getElementById("b-unit")?.value;
+    const cin    = document.getElementById("b-cin")?.value;
+    const cout   = document.getElementById("b-cout")?.value;
+    const preview= document.getElementById("total-preview");
+    if(!preview) return;
+    if(unitId && cin && cout && cout > cin){
+      const u = getUnit(unitId);
+      const total = nts(cin, cout) * (u?.price || 0);
+      preview.innerHTML = `<div class="info-box">
+        <span style="color:#8b86a8">Estimated total: </span>
+        <span style="font-weight:600;color:#9d65f5">${fmt(total)}</span>
+        <span style="color:#8b86a8"> (${nts(cin,cout)} nights × ${fmt(u?.price||0)})</span>
+      </div>`;
+    } else {
+      preview.innerHTML = "";
+    }
+  }catch(e){}
+  // never call render() here - it wipes the form
+};
+window.updateEditForm = function(k,v){if(S.editForm)S.editForm[k]=v;};
+
+// ═══════════════════════════════════════════
+//  RENDER: LOGIN
+// ═══════════════════════════════════════════
+function renderLogin(){
+  return `
+  <div class="login-wrap">
+    <div class="login-glow"></div>
+    <div class="login-box">
+      <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:28px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+          ${LOGO(44)}
+          <span style="font-size:26px;font-weight:800;background:linear-gradient(135deg,#c4b5fd,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent">ApartBook</span>
+        </div>
+        <div style="font-size:13px;color:#8b86a8">Property Management System</div>
+      </div>
+      <div class="login-card">
+        <div style="font-size:20px;font-weight:700;margin-bottom:4px">Welcome back</div>
+        <div style="font-size:13px;color:#8b86a8;margin-bottom:20px">Sign in to manage your properties</div>
+        <label>Email address</label>
+        <input id="li-email" type="email" placeholder="admin@yourdomain.com" style="margin-bottom:10px" onkeydown="if(event.key==='Enter')doLogin()"/>
+        <label>Password</label>
+        <div class="pw-wrap">
+          <input id="li-pass" type="${S.showPw?'text':'password'}" placeholder="Your password" onkeydown="if(event.key==='Enter')doLogin()"/>
+          <button class="pw-toggle" onclick="togglePw()">${S.showPw?"Hide":"Show"}</button>
+        </div>
+        ${S.loginErr?`<div class="err" style="margin:8px 0 4px">${esc(S.loginErr)}</div>`:""}
+        <button class="btn-login" onclick="doLogin()" ${S.loginBusy?"disabled":""}>${S.loginBusy?"Signing in…":"Sign In →"}</button>
+        <div style="font-size:12px;color:#5a5475;text-align:center;margin-top:16px;line-height:1.6">Contact your administrator to create or reset your account.</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+//  RENDER: HEADER
+// ═══════════════════════════════════════════
+function renderHeader(){
+  const tabs=[{n:"Dashboard",s:true},{n:"Properties",s:isAdmin()},{n:"New Booking",s:isMgr()},{n:"Bookings",s:true},{n:"Customers",s:isMgr()},{n:"Calendar",s:true},{n:"Reports",s:isMgr()},{n:"Staff",s:isAdmin()},{n:"Audit",s:isAdmin()}].filter(t=>t.s);
+  const propSel=S.properties.length>1
+    ?`<select onchange="selectProp(this.value)" style="background:#1a1a26;border:1px solid #3a3a55;border-radius:7px;color:#e8e6f0;padding:3px 6px;font-size:11px;outline:none;max-width:110px;flex-shrink:0">${S.properties.map(p=>`<option value="${p._id}" ${p._id===S.selProp?"selected":""}>${esc(p.name)}</option>`).join("")}</select>`
+    :curProp()
+    ?`<span style="font-size:11px;color:#8b86a8;padding:3px 8px;background:#1a1a26;border:1px solid #2a2a3d;border-radius:7px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0">${esc(curProp().name)}</span>`
+    :"";
+  return `
+  <div class="hdr">
+    <!-- Row 1: Logo + Property + User -->
+    <div class="hdr-top">
+      <div style="display:flex;align-items:center;gap:7px;flex-shrink:0">
+        ${LOGO(26)}
+        <span style="font-size:14px;font-weight:800;background:linear-gradient(135deg,#c4b5fd,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;white-space:nowrap">ApartBook</span>
+      </div>
+      ${propSel}
+      <div style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <div style="display:flex;align-items:center;gap:5px;background:#1a1a26;border:1px solid #3a3a55;border-radius:8px;padding:4px 8px 4px 5px">
+          ${av(S.user.email,22)}
+          <div style="max-width:80px">
+            <div style="font-size:10px;color:#e8e6f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(S.user.email.split("@")[0])}</div>
+            <div style="font-size:9px;color:${RC[S.profile?.role]||"#8b86a8"};text-transform:capitalize">${esc(S.profile?.role||"")}</div>
+          </div>
+        </div>
+        <button onclick="doLogout()" title="Sign out"
+          style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:#2d0d0d;border:1px solid rgba(239,68,68,.5);border-radius:8px;padding:5px 9px;cursor:pointer;gap:1px;flex-shrink:0">
+          <span style="font-size:14px;line-height:1;color:#ef4444">⏻</span>
+          <span style="font-size:8px;color:#ef4444;font-weight:700;letter-spacing:.04em">OUT</span>
+        </button>
+      </div>
+    </div>
+    <!-- Row 2: Tabs (scrollable) -->
+    <div class="hdr-tabs">
+      ${tabs.map(t=>`<button class="${S.tab===t.n?"active":""}" onclick="goTo('${t.n}')">${t.n}</button>`).join("")}
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+//  RENDER: DASHBOARD
+// ═══════════════════════════════════════════
+function renderDashboard(){
+  const t=tod();const occ=occupied();
+  const now=new Date();
+  const curMonth=now.getMonth();
+  const curYear=now.getFullYear();
+  const monthlyBookings=S.bookings.filter(b=>{
+    const d=new Date(b.checkIn);
+    return d.getMonth()===curMonth&&d.getFullYear()===curYear;
+  });
+  const monthlyRev=monthlyBookings
+    .filter(b=>b.payment==="Paid"||b.payment==="Partial")
+    .reduce((s,b)=>s+(getUnit(b.unitId)?.price||0)*nts(b.checkIn,b.checkOut)*(b.payment==="Paid"?1:.5),0);
+  const upcoming=S.bookings.filter(b=>b.checkIn>=t&&b.status==="Confirmed").slice(0,5);
+  const checkInsToday=S.bookings.filter(b=>b.checkIn===t&&b.status!=="Cancelled");
+  const checkOutsToday=S.bookings.filter(b=>b.checkOut===t&&b.status!=="Cancelled");
+  const units=allUnits();
+  const fmtTime=t12=>{if(!t12)return"—";const[h,m]=t12.split(":");const hh=Number(h);return`${hh%12||12}:${m} ${hh<12?"AM":"PM"}`};
+  const bookedIds = new Set(S.bookings.filter(b=>b.checkIn>t&&b.status==="Confirmed").map(b=>b.unitId));
+  return `
+  <div class="pg-title">Overview <span style="color:#8b86a8;font-size:13px;font-weight:400">— ${t}</span></div>
+  <div class="stats">
+    <div class="stat" style="border-top:3px solid #9d65f5"><div class="stat-l">Total bookings</div><div class="stat-v" style="color:#9d65f5">${S.bookings.length}</div></div>
+    <div class="stat" style="border-top:3px solid #22c55e"><div class="stat-l">Occupied units</div><div class="stat-v" style="color:#22c55e">${occ.size}/${units.length}</div></div>
+    <div class="stat" style="border-top:3px solid #f59e0b"><div class="stat-l">Check-ins today</div><div class="stat-v" style="color:#f59e0b">${checkInsToday.length}</div></div>
+    <div class="stat" style="border-top:3px solid #60a5fa"><div class="stat-l">Check-outs today</div><div class="stat-v" style="color:#60a5fa">${checkOutsToday.length}</div></div>
+    <div class="stat wide" style="border-top:3px solid #9d65f5">
+      <div class="stat-l">Total Monthly Gross Revenue — <span style="color:#9d65f5;font-weight:500">${MN[curMonth]} ${curYear}</span></div>
+      <div class="stat-v" style="color:#9d65f5;font-size:18px">${fmt(Math.round(monthlyRev))}</div>
+    </div>
+  </div>
+
+  <!-- Units -->
+  <div class="card">
+    <div class="card-title">Unit Status — ${esc(curProp()?.name||"")}</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px;font-size:11px">
+      <span>🔴 Occupied</span><span>🟡 Booked</span><span>🟢 Free</span>
+    </div>
+    <div class="unit-grid">
+      ${units.length===0?`<div style="color:#8b86a8;font-size:13px;padding:8px 0">No units yet. Go to Properties tab to add units.</div>`:units.map(u=>{
+        const c=clr(u.colorIdx||0);
+        const isOcc=occ.has(u.id);
+        const isBooked=!isOcc&&bookedIds.has(u.id);
+        const cur=S.bookings.find(b=>b.unitId===u.id&&b.checkIn<=t&&b.checkOut>t&&b.status==="Confirmed");
+        const upcoming=S.bookings.find(b=>b.unitId===u.id&&b.checkIn>t&&b.status==="Confirmed");
+        const borderClr=isOcc?c.c+"66":isBooked?"#f59e0b66":"#2a2a3d";
+        const leftClr=isOcc?c.c:isBooked?"#f59e0b":"#3a3a55";
+        const bgClr=isOcc?c.b:isBooked?"#2d1f0d":"#1a1a26";
+        const nameClr=isOcc?c.c:isBooked?"#f59e0b":"#e8e6f0";
+        const statusLabel=isOcc?"🔴 Occupied":isBooked?"🟡 Booked":"🟢 Free";
+        const statusBg=isOcc?c.c:isBooked?"#f59e0b":"#2a2a3d";
+        const statusTxt=isOcc?"#fff":isBooked?"#000":"#8b86a8";
+        return `<div style="border:1px solid ${borderClr};border-left:3px solid ${leftClr};border-radius:10px;padding:11px 14px;background:${bgClr}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font-weight:600;font-size:13px;color:${nameClr}">${esc(u.name)}</span>
+            <span style="font-size:10px;font-weight:600;color:${statusTxt};background:${statusBg};border-radius:20px;padding:2px 9px">${statusLabel}</span>
+          </div>
+          <div style="font-size:11px;color:#8b86a8">${u.floor?u.floor+" · ":""}${u.beds} bed${u.beds!==1?"s":""} · ${fmt(u.price)}/night</div>
+          ${cur?`
+          <div class="ticker-wrap" style="margin-top:6px;border-top:1px solid ${c.c}22;background:${c.c}11">
+            <div class="ticker" style="font-size:12px;font-weight:500;color:${c.c};white-space:nowrap;display:inline-block;letter-spacing:.01em">
+              👤 &nbsp;<strong>${esc(cur.guest)}</strong>&nbsp; · &nbsp;Checks out:&nbsp;<strong>${cur.checkOut}</strong>${cur.checkOutTime?`&nbsp;at&nbsp;<strong>${fmtTime(cur.checkOutTime)}</strong>`:""}&nbsp;&nbsp;&nbsp;⬥&nbsp;&nbsp;&nbsp;
+              👤 &nbsp;<strong>${esc(cur.guest)}</strong>&nbsp; · &nbsp;Checks out:&nbsp;<strong>${cur.checkOut}</strong>${cur.checkOutTime?`&nbsp;at&nbsp;<strong>${fmtTime(cur.checkOutTime)}</strong>`:""}
+            </div>
+          </div>`:""}
+          ${isBooked&&upcoming?`
+          <div class="ticker-wrap" style="margin-top:6px;border-top:1px solid #f59e0b22;background:#f59e0b11">
+            <div class="ticker" style="font-size:12px;font-weight:500;color:#f59e0b;white-space:nowrap;display:inline-block;letter-spacing:.01em">
+              📅 &nbsp;<strong>${esc(upcoming.guest)}</strong>&nbsp; · &nbsp;Checks in:&nbsp;<strong>${upcoming.checkIn}</strong>${upcoming.checkInTime?`&nbsp;at&nbsp;<strong>${fmtTime(upcoming.checkInTime)}</strong>`:""}&nbsp;&nbsp;&nbsp;⬥&nbsp;&nbsp;&nbsp;
+              📅 &nbsp;<strong>${esc(upcoming.guest)}</strong>&nbsp; · &nbsp;Checks in:&nbsp;<strong>${upcoming.checkIn}</strong>${upcoming.checkInTime?`&nbsp;at&nbsp;<strong>${fmtTime(upcoming.checkInTime)}</strong>`:""}
+            </div>
+          </div>`:""}
+
+        </div>`;
+      }).join("")}
+    </div>
+  </div>
+
+  <!-- Today's Check-ins -->
+  <div class="card">
+    <div class="card-title">📥 Today's Check-ins (${checkInsToday.length})</div>
+    ${checkInsToday.length===0?`<div class="empty">No check-ins today.</div>`:checkInsToday.map(b=>{
+      const u=getUnit(b.unitId);const c=u?clr(u.colorIdx||0):CLRS[0];
+      return `<div class="checkin-item" onclick="openSel('${b._id}');goTo('Bookings')">
+        ${av(b.guest,36,c.b,c.c+"44",c.c)}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600">${esc(b.guest)}</div>
+          <div style="font-size:11px;color:#8b86a8">${esc(u?.name||"—")} · ${nts(b.checkIn,b.checkOut)} nights</div>
+          <div style="font-size:11px;color:#f59e0b;margin-top:2px">⏰ Check-in: ${b.checkInTime?fmtTime(b.checkInTime):"Time not set"}</div>
+        </div>
+        ${statusBadge(b.status)}
+      </div>`;
+    }).join("")}
+  </div>
+
+  <!-- Today's Check-outs -->
+  <div class="card">
+    <div class="card-title">📤 Today's Check-outs (${checkOutsToday.length})</div>
+    ${checkOutsToday.length===0?`<div class="empty">No check-outs today.</div>`:checkOutsToday.map(b=>{
+      const u=getUnit(b.unitId);const c=u?clr(u.colorIdx||0):CLRS[0];
+      return `<div class="checkin-item" onclick="openSel('${b._id}');goTo('Bookings')">
+        ${av(b.guest,36,c.b,c.c+"44",c.c)}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600">${esc(b.guest)}</div>
+          <div style="font-size:11px;color:#8b86a8">${esc(u?.name||"—")} · stayed ${nts(b.checkIn,b.checkOut)} nights</div>
+          <div style="font-size:11px;color:#60a5fa;margin-top:2px">⏰ Check-out: ${b.checkOutTime?fmtTime(b.checkOutTime):"Time not set"}</div>
+        </div>
+        ${payBadge(b.payment)}
+      </div>`;
+    }).join("")}
+  </div>
+
+  <!-- Upcoming -->
+  <div class="card">
+    <div class="card-title">🗓 Upcoming Confirmed Check-ins</div>
+    ${upcoming.length===0?`<div class="empty">No upcoming confirmed check-ins.</div>`:upcoming.map(b=>{
+      const u=getUnit(b.unitId);const c=u?clr(u.colorIdx||0):CLRS[0];
+      return `<div class="checkin-item" onclick="openSel('${b._id}');goTo('Bookings')">
+        ${av(b.guest,34,c.b,c.c+"44",c.c)}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:500">${esc(b.guest)}</div>
+          <div style="font-size:11px;color:#8b86a8">${esc(u?.name||"—")} · ${b.checkIn} → ${b.checkOut} · ${nts(b.checkIn,b.checkOut)} nights</div>
+          ${b.checkInTime?`<div style="font-size:11px;color:#9d65f5;margin-top:2px">⏰ ${fmtTime(b.checkInTime)}</div>`:""}
+        </div>
+        ${statusBadge(b.status)}
+      </div>`;
+    }).join("")}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+//  RENDER: PROPERTIES
+// ═══════════════════════════════════════════
+function renderProperties(){
+  if(!isAdmin())return`<div class="empty">Admin access required.</div>`;
+  return `
+  <div class="pg-title">Properties Management</div>
+  <div class="card">
+    <div class="card-title">Add New Property</div>
+    <div class="frow">
+      <div class="fcol"><label>Property name *</label><input id="prop-name" placeholder="Ocean View Apartments"/></div>
+      <div class="fcol"><label>Address</label><input id="prop-addr" placeholder="Full address"/></div>
+    </div>
+    <label>Description</label><textarea id="prop-desc" style="height:58px" placeholder="Brief description…"></textarea>
+    ${S.propErr?`<div class="err">${esc(S.propErr)}</div>`:""}
+    ${S.propOk?`<div class="ok">${esc(S.propOk)}</div>`:""}
+    <button class="btnp" onclick="addProperty()">Add Property</button>
+  </div>
+  ${S.properties.map(p=>`
+  <div class="card" style="border-color:${p._id===S.selProp?"rgba(124,58,237,.5)":"#2a2a3d"}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div><div style="font-weight:600;font-size:15px">${esc(p.name)}</div><div style="font-size:12px;color:#8b86a8;margin-top:2px">${esc(p.address||"")}</div></div>
+      ${p._id!==S.selProp?`<button class="btn" onclick="selectProp('${p._id}')">Set Active</button>`:`<span style="font-size:11px;color:#22c55e;padding:6px 12px;border:1px solid rgba(34,197,94,.3);border-radius:8px">✓ Active</span>`}
+    </div>
+    <div style="font-weight:500;font-size:13px;margin-bottom:8px">Units (${p.units?.length||0})</div>
+    <div class="prop-units">
+      ${(p.units||[]).map(u=>{const c=clr(u.colorIdx||0);return`<div class="prop-unit" style="background:${c.b};border:1px solid ${c.c}33">
+        <div><div style="font-size:12px;font-weight:500;color:${c.c}">${esc(u.name)}</div><div style="font-size:10px;color:#8b86a8">${u.floor?u.floor+" · ":""}${u.beds} bed · ${fmt(u.price)}/night</div></div>
+        <button style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:18px;padding:0 4px;line-height:1" onclick="deleteUnit('${p._id}','${u.id}')">×</button>
+      </div>`;}).join("")||`<div style="font-size:13px;color:#8b86a8">No units yet.</div>`}
+    </div>
+    ${S.editingProp===p._id?`
+    <div class="add-unit-form">
+      <div style="font-weight:500;font-size:13px;margin-bottom:8px">Add Unit</div>
+      <div class="frow">
+        <div class="fcol"><label>Unit name *</label><input id="u-name" placeholder="Suite 101"/></div>
+        <div class="fcol"><label>Floor</label><input id="u-floor" placeholder="Ground"/></div>
+        <div style="flex:0 0 80px"><label>Beds</label><input id="u-beds" type="number" min="1" value="1"/></div>
+        <div class="fcol"><label>Price/night (₦)*</label><input id="u-price" type="number" placeholder="50000"/></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btnp" onclick="addUnit('${p._id}')">Add Unit</button>
+        <button class="btn" onclick="S.editingProp=null;render()">Cancel</button>
+      </div>
+    </div>`:`<button class="btn" onclick="setEditProp('${p._id}')">+ Add Unit</button>`}
+  </div>`).join("")}`;
+}
+
+// ═══════════════════════════════════════════
+//  RENDER: NEW BOOKING
+// ═══════════════════════════════════════════
+function renderNewBooking(){
+  if(!isMgr())return`<div class="empty">Manager access required.</div>`;
+  const t=tod();const occ=occupied();
+  const bookedIds=new Set(S.bookings.filter(b=>b.checkIn>t&&b.status==="Confirmed").map(b=>b.unitId));
+  const units=allUnits();
+  return `
+  <div class="pg-title">New Reservation — ${esc(curProp()?.name||"")}</div>
+  <div class="card">
+    <div class="frow">
+      <div class="fcol"><label>Guest name *</label><input id="b-guest" placeholder="Full name"/></div>
+      <div class="fcol"><label>Email <span style="color:#5a5475;font-size:11px">(optional)</span></label><input id="b-email" type="email" placeholder="guest@email.com"/></div>
+    </div>
+    <div class="frow">
+      <div class="fcol"><label>Phone (WhatsApp) 📱</label><input id="b-phone" placeholder="0801-234-5678"/></div>
+      <div class="fcol"><label>Unit *</label>
+        <select id="b-unit" onchange="refreshTotal()" style="background:#1a1a26;border:1px solid #3a3a55;border-radius:8px;color:#e8e6f0;padding:8px 12px;font-size:13px;width:100%;outline:none;margin-bottom:10px">
+          <option value="">— Select unit —</option>
+          ${units.map(u=>{
+            const isOcc=occ.has(u.id);
+            const isBooked=!isOcc&&bookedIds.has(u.id);
+            const upcomingBk=S.bookings.find(b=>b.unitId===u.id&&b.checkIn>t&&b.status==="Confirmed");
+            const label=isOcc
+              ? `🔴 ${u.name} — OCCUPIED (unavailable)`
+              : isBooked
+              ? `🟡 ${u.name} — BOOKED · ${upcomingBk?`${upcomingBk.guest}, ${upcomingBk.checkIn}→${upcomingBk.checkOut}`:""}`
+              : `🟢 ${u.name} — ${fmt(u.price)}/night`;
+            return `<option value="${u.id}" ${isOcc?"disabled":""} style="color:${isOcc?"#ef4444":isBooked?"#f59e0b":"#e8e6f0"}">${label}</option>`;
+          }).join("")}
+        </select>
+        <!-- Visual unit picker cards -->
+        <div id="unit-cards" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+          ${units.map(u=>{
+            const c=clr(u.colorIdx||0);
+            const isOcc=occ.has(u.id);
+            const isBooked=!isOcc&&bookedIds.has(u.id);
+            const upcomingBk=S.bookings.find(b=>b.unitId===u.id&&b.checkIn>t&&b.status==="Confirmed");
+            const borderClr=isOcc?"#ef4444":isBooked?"#f59e0b":c.c+"44";
+            const bgClr=isOcc?"#2d0d0d":isBooked?"#2d1f0d":c.b;
+            const tagBg=isOcc?"#ef4444":isBooked?"#f59e0b":"#22c55e";
+            const tagTxt=isOcc?"🔴 Occupied":isBooked?"🟡 Booked":"🟢 Available";
+            const tagColor=isOcc||isBooked?"#000":"#000";
+            return `<div onclick="${isOcc?"":`document.getElementById('b-unit').value='${u.id}';refreshTotal();document.querySelectorAll('.ucard').forEach(x=>x.style.borderColor='${c.c+"33"}');this.style.borderColor='${c.c}';this.style.background='${c.b}';`}"
+              class="ucard"
+              style="border:2px solid ${borderClr};border-radius:10px;padding:10px 14px;background:${bgClr};cursor:${isOcc?"not-allowed":"pointer"};transition:.2s;opacity:${isOcc?.6:1}">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div>
+                  <div style="font-size:13px;font-weight:600;color:${isOcc?"#ef4444":isBooked?"#f59e0b":c.c}">${esc(u.name)}</div>
+                  <div style="font-size:11px;color:#8b86a8;margin-top:2px">${u.floor?u.floor+" · ":""}${u.beds} bed${u.beds!==1?"s":""} · ${fmt(u.price)}/night</div>
+                  ${isBooked&&upcomingBk?`<div style="font-size:10px;color:#f59e0b;margin-top:3px">📅 ${esc(upcomingBk.guest)} · ${upcomingBk.checkIn} → ${upcomingBk.checkOut}</div>`:""}
+                  ${isOcc?`<div style="font-size:10px;color:#ef4444;margin-top:3px">⛔ Cannot book — unit is currently occupied</div>`:""}
+                </div>
+                <span style="font-size:10px;font-weight:700;background:${tagBg};color:${tagColor};border-radius:20px;padding:3px 10px;white-space:nowrap;flex-shrink:0;margin-left:8px">${tagTxt}</span>
+              </div>
+            </div>`;
+          }).join("")}
+        </div>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fcol"><label>Check-in date *</label><input id="b-cin" type="date" onchange="refreshTotal()"/></div>
+      <div class="fcol"><label>Check-in time ⏰</label>
+        <select id="b-cintime">
+          <option value="">— Select time —</option>
+          <option value="06:00">6:00 AM</option><option value="07:00">7:00 AM</option>
+          <option value="08:00">8:00 AM</option><option value="09:00">9:00 AM</option>
+          <option value="10:00">10:00 AM</option><option value="11:00">11:00 AM</option>
+          <option value="12:00">12:00 PM (Noon)</option><option value="13:00">1:00 PM</option>
+          <option value="14:00">2:00 PM</option><option value="15:00">3:00 PM</option>
+          <option value="16:00">4:00 PM</option><option value="17:00">5:00 PM</option>
+          <option value="18:00">6:00 PM</option><option value="19:00">7:00 PM</option>
+          <option value="20:00">8:00 PM</option><option value="21:00">9:00 PM</option>
+          <option value="22:00">10:00 PM</option>
+        </select>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fcol"><label>Check-out date *</label><input id="b-cout" type="date" onchange="refreshTotal()"/></div>
+      <div class="fcol"><label>Check-out time ⏰</label>
+        <select id="b-couttime">
+          <option value="">— Select time —</option>
+          <option value="06:00">6:00 AM</option><option value="07:00">7:00 AM</option>
+          <option value="08:00">8:00 AM</option><option value="09:00">9:00 AM</option>
+          <option value="10:00">10:00 AM</option><option value="11:00">11:00 AM</option>
+          <option value="12:00">12:00 PM (Noon)</option><option value="13:00">1:00 PM</option>
+          <option value="14:00">2:00 PM</option><option value="15:00">3:00 PM</option>
+          <option value="16:00">4:00 PM</option><option value="17:00">5:00 PM</option>
+          <option value="18:00">6:00 PM</option><option value="19:00">7:00 PM</option>
+          <option value="20:00">8:00 PM</option><option value="21:00">9:00 PM</option>
+          <option value="22:00">10:00 PM</option>
+        </select>
+      </div>
+    </div>
+    <div class="frow">
+      <div class="fcol"><label>Status</label><select id="b-status">${STATUSES.map(s=>`<option>${s}</option>`).join("")}</select></div>
+      <div class="fcol"><label>Payment</label><select id="b-pay">${["Paid","Partial","Unpaid"].map(s=>`<option>${s}</option>`).join("")}</select></div>
+    </div>
+    <label>Special notes</label>
+    <textarea id="b-notes" placeholder="Special requests…"></textarea>
+    <div id="total-preview"></div>
+    <div id="b-err" class="err"></div>
+    <div id="b-ok" class="ok"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btnp" onclick="addBooking()">Save Reservation</button>
+      <button class="btn" onclick="goTo('New Booking')">Clear</button>
+    </div>
+    <div style="font-size:11px;color:#5a5475;margin-top:10px">💬 You'll be prompted to send a WhatsApp confirmation after saving.</div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+//  RENDER: BOOKINGS
+// ═══════════════════════════════════════════
+function renderBookings(){
+  const filtered=S.bookings.filter(b=>{
+    const q=S.search.toLowerCase();
+    return(!q||b.guest?.toLowerCase().includes(q)||b.email?.toLowerCase().includes(q)||getUnit(b.unitId)?.name?.toLowerCase().includes(q))&&(S.filterStatus==="All"||b.status===S.filterStatus);
+  });
+  return `
+  <div class="flex-sb">
+    <div class="pg-title" style="margin-bottom:0">All Bookings <span style="color:#8b86a8;font-size:13px;font-weight:400">(${filtered.length})</span></div>
+    ${isMgr()?`<button class="btnp" onclick="goTo('New Booking')">+ New Booking</button>`:""}
+  </div>
+  <div class="search-row">
+    <input placeholder="Search guest, email, unit…" value="${esc(S.search)}" oninput="setSearch(this.value)"/>
+    <select onchange="setFilter(this.value)">
+      <option value="All" ${S.filterStatus==="All"?"selected":""}>All statuses</option>
+      ${STATUSES.map(s=>`<option value="${s}" ${S.filterStatus===s?"selected":""}>${s}</option>`).join("")}
+    </select>
+  </div>
+  <div class="tblw">
+    <table>
+      <thead><tr><th>Guest</th><th>Unit</th><th>Check-in</th><th>Check-out</th><th>Nts</th><th>Status</th><th>Payment</th><th></th></tr></thead>
+      <tbody>
+        ${filtered.length===0?`<tr><td colspan="8" class="empty">No bookings found.</td></tr>`:""}
+        ${filtered.map(b=>{
+          const u=getUnit(b.unitId);const c=u?clr(u.colorIdx||0):CLRS[0];
+          return `<tr onclick="openSel('${b._id}')">
+            <td><div style="display:flex;align-items:center;gap:8px">
+              ${av(b.guest,28,c.b,c.c+"44",c.c)}
+              <div><div style="font-weight:500">${esc(b.guest)}</div><div style="font-size:10px;color:#8b86a8">${esc(b.email)}</div></div>
+            </div></td>
+            <td>${unitChip(u)}</td><td>${b.checkIn}</td><td>${b.checkOut}</td>
+            <td>${nts(b.checkIn,b.checkOut)}</td><td>${statusBadge(b.status)}</td>
+            <td>${payBadge(b.payment)}</td>
+            <td><button class="btn" onclick="event.stopPropagation();openSel('${b._id}')">View</button></td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+//  RENDER: CUSTOMERS
+// ═══════════════════════════════════════════
+function renderCustomers(){
+  if(!isMgr())return`<div class="empty">Manager access required.</div>`;
+  const m={};
+  S.bookings.forEach(b=>{if(!m[b.email])m[b.email]={guest:b.guest,email:b.email,phone:b.phone,bookings:[]};m[b.email].bookings.push(b);});
+  const cust=Object.values(m).sort((a,b)=>b.bookings.length-a.bookings.length);
+  return `
+  <div class="pg-title">Customer Records <span style="color:#8b86a8;font-size:13px;font-weight:400">(${cust.length})</span></div>
+  ${cust.length===0?`<div class="card"><div class="empty">No customers yet.</div></div>`:""}
+  ${cust.map(c=>{
+    const spent=c.bookings.filter(b=>b.payment==="Paid").reduce((s,b)=>s+nts(b.checkIn,b.checkOut)*(getUnit(b.unitId)?.price||0),0);
+    const phone=fmtWA(c.phone||"");
+    return `<div class="card">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+        ${av(c.guest,42)}
+        <div style="flex:1"><div style="font-weight:500">${esc(c.guest)}</div><div style="font-size:12px;color:#8b86a8">${esc(c.email)}${c.phone?` · ${esc(c.phone)}`:""}</div></div>
+        <div style="text-align:right"><div style="font-size:12px;color:#8b86a8">${c.bookings.length} booking${c.bookings.length!==1?"s":""}</div>${spent>0?`<div style="font-size:12px;color:#22c55e;font-weight:500">${fmt(spent)} paid</div>`:""}</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:${phone.length>=10?"10px":"0"}">
+        ${c.bookings.map(b=>`<div onclick="openSel('${b._id}');goTo('Bookings')" style="display:flex;align-items:center;gap:5px;font-size:11px;background:#1a1a26;border-radius:7px;padding:5px 9px;cursor:pointer;border:1px solid #2a2a3d">
+          ${unitChip(getUnit(b.unitId))} <span style="color:#8b86a8">${b.checkIn}–${b.checkOut}</span> ${statusBadge(b.status)}
+        </div>`).join("")}
+      </div>
+      ${phone.length>=10?`<button class="btnwa" onclick="window.open('https://wa.me/${phone}','_blank')">💬 WhatsApp ${esc(c.guest.split(" ")[0])}</button>`:""}
+    </div>`;
+  }).join("")}`;
+}
+
+// ═══════════════════════════════════════════
+//  RENDER: CALENDAR
+// ═══════════════════════════════════════════
+function renderCalendar(){
+  const{y,m}=S.cal;
+  const first=new Date(y,m,1).getDay();
+  const days=new Date(y,m+1,0).getDate();
+  const t=tod();
+  const ds=d=>`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+  const bfD=d=>S.bookings.filter(b=>{const s=ds(d);return b.checkIn<=s&&b.checkOut>s&&b.status!=="Cancelled";});
+  const units=allUnits();
+  return `
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+    <button class="btn" onclick="calPrev()">← Prev</button>
+    <div style="font-size:17px;font-weight:600">${MN[m]} ${y}</div>
+    <button class="btn" onclick="calNext()">Next →</button>
+  </div>
+  <div class="card">
+    <div class="cal-grid" style="margin-bottom:5px">
+      ${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=>`<div class="cal-dn">${d}</div>`).join("")}
+    </div>
+    <div class="cal-grid">
+      ${Array(first).fill(0).map(()=>"<div></div>").join("")}
+      ${Array.from({length:days},(_,i)=>i+1).map(day=>{
+        const bks=bfD(day);const isT=ds(day)===t;
+        return `<div class="cal-day ${isT?"today":""} ${bks.length?"hasbk":""}">
+          <div class="cal-num ${isT?"today":""}">${day}</div>
+          ${bks.slice(0,2).map(b=>{const u=getUnit(b.unitId);const c=u?clr(u.colorIdx||0):CLRS[0];return`<div class="cal-bk" style="background:${c.c}">${esc(u?.name?.split(" ")[0]||"—")}</div>`;}).join("")}
+          ${bks.length>2?`<div style="font-size:9px;color:#9d65f5">+${bks.length-2}</div>`:""}
+        </div>`;
+      }).join("")}
+    </div>
+    <div class="cal-leg">
+      ${units.map(u=>{const c=clr(u.colorIdx||0);return`<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#8b86a8"><span style="width:10px;height:10px;border-radius:2px;background:${c.c};display:inline-block"></span>${esc(u.name)}</span>`;}).join("")}
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+//  RENDER: REPORTS
+// ═══════════════════════════════════════════
+function renderReports(){
+  if(!isMgr())return`<div class="empty">Manager access required.</div>`;
+  const mb=S.bookings.filter(b=>{const d=new Date(b.checkIn);return d.getMonth()===S.reportMonth&&d.getFullYear()===S.reportYear;});
+  const rev=mb.filter(b=>b.payment==="Paid").reduce((s,b)=>s+(getUnit(b.unitId)?.price||0)*nts(b.checkIn,b.checkOut),0);
+  const units=allUnits();
+  const maxR=Math.max(...units.map(u=>S.bookings.filter(b=>b.unitId===u.id&&b.payment==="Paid").reduce((s,b)=>s+nts(b.checkIn,b.checkOut)*u.price,0)),1);
+  return `
+  <div class="pg-title">Revenue Reports</div>
+  <div class="card">
+    <div class="card-title">📄 Generate Monthly PDF Report</div>
+    <div class="frow">
+      <div class="fcol"><label>Month</label><select onchange="setReportMonth(this.value)">${MN.map((mn,i)=>`<option value="${i}" ${i===S.reportMonth?"selected":""}>${mn}</option>`).join("")}</select></div>
+      <div class="fcol"><label>Year</label><select onchange="setReportYear(this.value)">${[2024,2025,2026,2027].map(y=>`<option value="${y}" ${y===S.reportYear?"selected":""}>${y}</option>`).join("")}</select></div>
+    </div>
+    <div style="background:#1a1a26;border-radius:9px;padding:13px 15px;margin-bottom:14px">
+      <div style="font-size:10px;color:#8b86a8;margin-bottom:9px;font-weight:500;text-transform:uppercase;letter-spacing:.04em">Preview: ${MN[S.reportMonth]} ${S.reportYear}</div>
+      <div class="rp-stats">
+        ${[{l:"Bookings",v:mb.length,c:"#9d65f5"},{l:"Confirmed",v:mb.filter(b=>b.status==="Confirmed").length,c:"#22c55e"},{l:"Cancelled",v:mb.filter(b=>b.status==="Cancelled").length,c:"#ef4444"},{l:"Revenue",v:fmt(rev),c:"#22c55e"}]
+          .map(x=>`<div><div style="font-size:10px;color:#8b86a8">${x.l}</div><div style="font-size:17px;font-weight:700;color:${x.c}">${x.v}</div></div>`).join("")}
+      </div>
+    </div>
+    <button class="btnp" onclick="generatePDF()" style="display:flex;align-items:center;gap:7px">📥 Download PDF</button>
+  </div>
+  <div class="card">
+    <div class="card-title">All-Time Revenue by Unit</div>
+    ${units.length===0?`<div class="empty">No units yet.</div>`:""}
+    ${units.map(u=>{
+      const c=clr(u.colorIdx||0);
+      const r=S.bookings.filter(b=>b.unitId===u.id&&b.payment==="Paid").reduce((s,b)=>s+nts(b.checkIn,b.checkOut)*u.price,0);
+      const cnt=S.bookings.filter(b=>b.unitId===u.id).length;
+      return `<div class="bar-wrap">
+        <div class="bar-row"><span style="color:${c.c};font-weight:500">${esc(u.name)}</span><span style="color:#22c55e;font-weight:500">${fmt(r)}<span style="color:#8b86a8;font-weight:400;font-size:10px"> · ${cnt} bk${cnt!==1?"s":""}</span></span></div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${(r/maxR*100).toFixed(1)}%;background:linear-gradient(90deg,${c.c},${c.c}88)"></div></div>
+      </div>`;
+    }).join("")}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+//  RENDER: STAFF
+// ═══════════════════════════════════════════
+function renderStaff(){
+  if(!isAdmin())return`<div class="empty">Admin access required.</div>`;
+  return `
+  <div class="pg-title">Staff Management</div>
+  <div style="font-size:13px;color:#8b86a8;margin-bottom:14px">Create accounts via Firebase Console → Authentication → Add user. Then set roles below.</div>
+  <div class="tblw" style="margin-bottom:14px">
+    <table>
+      <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Change role</th></tr></thead>
+      <tbody>
+        ${S.staff.length===0?`<tr><td colspan="4" class="empty">No staff records yet.</td></tr>`:""}
+        ${S.staff.map(s=>`<tr>
+          <td><div style="display:flex;align-items:center;gap:8px">${av(s.name||s.email,28)}<span style="font-weight:500">${esc(s.name||s.email.split("@")[0])}${s._id===S.user.uid?`<span style="font-size:9px;color:#5a5475"> (you)</span>`:""}</span></div></td>
+          <td style="font-size:11px;color:#8b86a8">${esc(s.email)}</td>
+          <td>${roleBadge(s.role)}</td>
+          <td>${s._id!==S.user.uid?`<div style="display:flex;gap:5px;flex-wrap:wrap">${ROLES.map(r=>`<button class="btn" style="font-size:10px;padding:4px 8px;text-transform:capitalize;${s.role===r?"background:rgba(124,58,237,.2);color:#9d65f5;border-color:rgba(124,58,237,.4)":""}" onclick="updateRole('${s._id}','${r}')">${r}</button>`).join("")}</div>`:`<span style="font-size:11px;color:#5a5475">Own account</span>`}</td>
+        </tr>`).join("")}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <div class="card-title">Role Permissions</div>
+    <div class="perm-grid">
+      ${[{r:"admin",p:["All features","Manage properties","Manage staff","Audit log","Delete bookings"]},{r:"manager",p:["Add/edit bookings","Customers","Reports","WhatsApp","Paystack"]},{r:"staff",p:["View bookings","Dashboard","Calendar"]}].map(x=>`
+      <div class="perm-card" style="border:1px solid ${RC[x.r]||"#2a2a3d"}33">${roleBadge(x.r)}<ul class="perm-list">${x.p.map(p=>`<li>${p}</li>`).join("")}</ul></div>`).join("")}
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+//  RENDER: AUDIT
+// ═══════════════════════════════════════════
+function renderAudit(){
+  if(!isAdmin())return`<div class="empty">Admin access required.</div>`;
+  return `
+  <div class="pg-title">Audit Log</div>
+  <div style="font-size:13px;color:#8b86a8;margin-bottom:14px">Every login and logout is automatically recorded.</div>
+  <div class="tblw">
+    <table>
+      <thead><tr><th>User</th><th>Action</th><th>Date & Time</th><th>Device</th></tr></thead>
+      <tbody>
+        ${S.auditLog.length===0?`<tr><td colspan="4" class="empty">No records yet.</td></tr>`:""}
+        ${S.auditLog.map(l=>`<tr>
+          <td style="color:#9d65f5;font-size:11px">${esc(l.email)}</td>
+          <td><span class="badge" style="background:${l.action==="LOGIN"?"#1a1040":"#2d0d0d"};color:${l.action==="LOGIN"?"#9d65f5":"#ef4444"}">${l.action}</span></td>
+          <td style="color:#8b86a8;font-size:11px">${l.timestamp?.toDate?.()?.toLocaleString()||"—"}</td>
+          <td style="color:#5a5475;font-size:10px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc((l.device||"—").slice(0,60))}</td>
+        </tr>`).join("")}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+//  RENDER: MODAL
+// ═══════════════════════════════════════════
+function renderModal(){
+  if(!S.sel)return"";
+  const b=S.sel;const u=getUnit(b.unitId);const c=u?clr(u.colorIdx||0):CLRS[0];
+  const total=nts(b.checkIn,b.checkOut)*(u?.price||0);
+  const fmtTime=t12=>{if(!t12)return"—";const[h,m]=t12.split(":");const hh=Number(h);return`${hh%12||12}:${m} ${hh<12?"AM":"PM"}`};
+  if(S.editMode&&S.editForm){
+    const f=S.editForm;
+    return `<div class="modal-bg" onclick="closeSel()"><div class="modal-box" onclick="event.stopPropagation()">
+      <div class="mhdr"><div class="mtitle">Edit Booking</div><button class="btn" onclick="S.editMode=false;render()">Cancel</button></div>
+      <div class="frow">
+        <div class="fcol"><label>Guest name</label><input value="${esc(f.guest)}" oninput="updateEditForm('guest',this.value)"/></div>
+        <div class="fcol"><label>Email</label><input value="${esc(f.email)}" oninput="updateEditForm('email',this.value)"/></div>
+      </div>
+      <div class="frow">
+        <div class="fcol"><label>Phone</label><input value="${esc(f.phone||"")}" oninput="updateEditForm('phone',this.value)"/></div>
+        <div class="fcol"><label>Unit</label><select onchange="updateEditForm('unitId',this.value)">${allUnits().map(u=>`<option value="${u.id}" ${u.id===f.unitId?"selected":""}>${esc(u.name)}</option>`).join("")}</select></div>
+      </div>
+      <div class="frow">
+        <div class="fcol"><label>Check-in</label><input type="date" value="${f.checkIn}" oninput="updateEditForm('checkIn',this.value)"/></div>
+        <div class="fcol"><label>Check-out</label><input type="date" value="${f.checkOut}" oninput="updateEditForm('checkOut',this.value)"/></div>
+      </div>
+      <div class="frow">
+        <div class="fcol"><label>Status</label><select onchange="updateEditForm('status',this.value)">${STATUSES.map(s=>`<option ${s===f.status?"selected":""}>${s}</option>`).join("")}</select></div>
+        <div class="fcol"><label>Payment</label><select onchange="updateEditForm('payment',this.value)">${["Paid","Partial","Unpaid"].map(s=>`<option ${s===f.payment?"selected":""}>${s}</option>`).join("")}</select></div>
+      </div>
+      <label>Notes</label><textarea oninput="updateEditForm('notes',this.value)">${esc(f.notes||"")}</textarea>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btnp" onclick="saveEdit()">Save Changes</button>
+        <button class="btn" onclick="S.editMode=false;render()">Cancel</button>
+      </div>
+    </div></div>`;
+  }
+  return `<div class="modal-bg" onclick="closeSel()"><div class="modal-box" onclick="event.stopPropagation()">
+    <div class="mhdr">
+      <div class="mtitle">Booking Details</div>
+      <div style="display:flex;gap:7px">
+        ${isMgr()?`<button class="btn" onclick="openEdit()">Edit</button>`:""}
+        ${isAdmin()?`<button class="btnd" onclick="setDelId('${b._id}')">Delete</button>`:""}
+        <button class="btn" onclick="closeSel()">✕</button>
+      </div>
+    </div>
+    <div class="dr"><span class="dl">Guest</span><strong>${esc(b.guest)}</strong></div>
+    <div class="dr"><span class="dl">Email</span>${esc(b.email)}</div>
+    <div class="dr"><span class="dl">Phone</span>${esc(b.phone||"—")}</div>
+    <div class="dr"><span class="dl">Unit</span>${unitChip(u)}</div>
+    <div class="dr"><span class="dl">Check-in</span>${b.checkIn}${b.checkInTime?` <span style="color:#f59e0b;font-size:11px">at ${fmtTime(b.checkInTime)}</span>`:""}</div>
+    <div class="dr"><span class="dl">Check-out</span>${b.checkOut}${b.checkOutTime?` <span style="color:#60a5fa;font-size:11px">at ${fmtTime(b.checkOutTime)}</span>`:""}</div>
+    <div class="dr"><span class="dl">Nights</span>${nts(b.checkIn,b.checkOut)}</div>
+    <div class="dr"><span class="dl">Total</span><strong style="color:#22c55e">${fmt(total)}</strong></div>
+    <div class="dr"><span class="dl">Status</span>${statusBadge(b.status)}</div>
+    <div class="dr"><span class="dl">Payment</span>${payBadge(b.payment)}</div>
+    ${b.paystackRef?`<div class="dr"><span class="dl">Pay Ref</span><span style="color:#8b86a8;font-size:11px">${esc(b.paystackRef)}</span></div>`:""}
+    <div class="dr"><span class="dl">Notes</span>${esc(b.notes||"—")}</div>
+    ${b.createdBy?`<div class="dr"><span class="dl">Created by</span><span style="color:#8b86a8;font-size:11px">${esc(b.createdBy)}</span></div>`:""}
+    ${isMgr()?`
+    <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px">
+      <button class="btnwa" onclick="sendWA('${b._id}')">💬 Send WhatsApp Confirmation</button>
+      ${b.payment!=="Paid"?`<button class="btnpay" onclick="openPaystack('${b._id}')">💳 Collect Payment via Paystack</button>`:`<div style="background:#0d2d1a;border:1px solid rgba(34,197,94,.3);border-radius:8px;padding:11px;text-align:center;font-size:13px;color:#22c55e">✓ Payment fully received</div>`}
+    </div>
+    <div style="margin-top:14px">
+      <div style="font-size:12px;color:#8b86a8;margin-bottom:7px">Quick status update</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${STATUSES.map(st=>`<button class="btn" style="${b.status===st?"background:#2d1b69;color:#9d65f5;border-color:#7c3aed;font-weight:500":""}" onclick="qStatus('${b._id}','${st}')">${st}</button>`).join("")}
+      </div>
+    </div>`:""}
+  </div></div>`;
+}
+
+// ═══════════════════════════════════════════
+//  RENDER: DELETE CONFIRM
+// ═══════════════════════════════════════════
+function renderDelConfirm(){
+  if(!S.delId)return"";
+  return `<div class="modal-bg" onclick="clearDel()"><div class="modal-box" style="max-width:330px" onclick="event.stopPropagation()">
+    <div style="font-weight:600;margin-bottom:10px;font-size:16px">Delete this booking?</div>
+    <div style="font-size:13px;color:#8b86a8;margin-bottom:18px">This is permanent and cannot be undone.</div>
+    <div style="display:flex;gap:8px">
+      <button class="btnp" style="background:#ef4444" onclick="delBooking('${S.delId}')">Yes, delete</button>
+      <button class="btn" onclick="clearDel()">Cancel</button>
+    </div>
+  </div></div>`;
+}
+
+// ═══════════════════════════════════════════
+//  MAIN RENDER
+// ═══════════════════════════════════════════
+function render(){
+  const app=document.getElementById("app");if(!app)return;
+  if(S.user===null){app.innerHTML=renderLogin();return;}
+  if(!S.user||!S.profile){app.innerHTML=`<div class="splash">${LOGO(48)}<p>${!S.user?"Starting…":"Loading profile…"}</p></div>`;return;}
+  const views={Dashboard:renderDashboard,Properties:renderProperties,"New Booking":renderNewBooking,Bookings:renderBookings,Customers:renderCustomers,Calendar:renderCalendar,Reports:renderReports,Staff:renderStaff,Audit:renderAudit};
+  const content=(views[S.tab]||renderDashboard)();
+  app.innerHTML=`
+    ${renderHeader()}
+    <div class="main">${content}</div>
+    ${S.sel&&!S.delId?renderModal():""}
+    ${S.delId?renderDelConfirm():""}
+    <a class="wa-float" href="https://wa.me/2348000000000" target="_blank" title="Support">💬</a>`;
+}
+
+// ═══════════════════════════════════════════
+//  INIT — Firebase Auth Listener
+// ═══════════════════════════════════════════
+auth.onAuthStateChanged(user=>{
+  S.user=user||null;
+  if(user){loadProfile();loadProperties();}
+  else{S.profile=null;S.bookings=[];S.properties=[];S.selProp=null;if(bkUnsub){bkUnsub();bkUnsub=null;}auditUnsub=null;staffUnsub=null;}
+  render();
+});
+
+render();
+</script>
+<script>if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});</script>
+</body>
+</html>
