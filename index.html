@@ -421,6 +421,58 @@ window.sendWA = function(bid){
 // ═══════════════════════════════════════════
 //  PDF REPORT
 // ═══════════════════════════════════════════
+window.exportCSV = function(){
+  const units=allUnits();
+  const rows=[
+    ["ApartBook — Booking Export"],
+    [`Property: ${curProp()?.name||""}`],
+    [`Exported: ${new Date().toLocaleString()}`],
+    [],
+    ["#","Guest Name","Email","Phone","Unit","Floor","Beds","Price/Night",
+     "Check-in Date","Check-in Time","Check-out Date","Check-out Time",
+     "Nights","Total Amount","Status","Payment","Paystack Ref","Notes","Created By","Created At"],
+  ];
+  S.bookings.forEach((b,i)=>{
+    const u=units.find(x=>x.id===b.unitId)||{};
+    const nights=nts(b.checkIn,b.checkOut);
+    const total=nights*(u.price||0);
+    const fmtTime=t=>{if(!t)return"";const[h,m]=t.split(":");const hh=Number(h);return`${hh%12||12}:${m} ${hh<12?"AM":"PM"}`;};
+    const createdAt=b.created?.toDate?.()?.toLocaleString()||"";
+    rows.push([
+      i+1, b.guest||"", b.email||"", b.phone||"",
+      u.name||"", u.floor||"", u.beds||"", u.price||0,
+      b.checkIn||"", fmtTime(b.checkInTime),
+      b.checkOut||"", fmtTime(b.checkOutTime),
+      nights, total, b.status||"", b.payment||"",
+      b.paystackRef||"", b.notes||"", b.createdBy||"", createdAt,
+    ]);
+  });
+  // add summary rows at bottom
+  const paid=S.bookings.filter(b=>b.payment==="Paid").reduce((s,b)=>s+nts(b.checkIn,b.checkOut)*(units.find(u=>u.id===b.unitId)?.price||0),0);
+  rows.push([],[]);
+  rows.push(["SUMMARY"]);
+  rows.push(["Total Bookings", S.bookings.length]);
+  rows.push(["Confirmed", S.bookings.filter(b=>b.status==="Confirmed").length]);
+  rows.push(["Checked-out", S.bookings.filter(b=>b.status==="Checked-out").length]);
+  rows.push(["Cancelled", S.bookings.filter(b=>b.status==="Cancelled").length]);
+  rows.push(["Total Revenue (Paid)", paid]);
+  rows.push(["Total Units", units.length]);
+  rows.push(["Total Customers", new Set(S.bookings.map(b=>b.email||b.phone||b.guest)).size]);
+
+  const csv=rows.map(r=>r.map(c=>{
+    const s=String(c).replace(/"/g,'""');
+    return s.includes(",")||s.includes("\n")||s.includes('"')?`"${s}"`:s;
+  }).join(",")).join("\n");
+
+  const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=`ApartBook-${curProp()?.name||"Export"}-${new Date().toISOString().split("T")[0]}.csv`;
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);URL.revokeObjectURL(url);
+};
+
 window.generatePDF = function(){
   if(!window.jspdf){alert("PDF library not loaded yet. Try again in a moment.");return;}
   const{jsPDF}=window.jspdf;
