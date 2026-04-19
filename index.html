@@ -425,31 +425,47 @@ window.generatePDF = function(){
   if(!window.jspdf){alert("PDF library not loaded yet. Try again in a moment.");return;}
   const{jsPDF}=window.jspdf;
   const doc=new jsPDF();
+  // jsPDF cannot render ₦ — use NGN instead
+  const pfmt = n => "NGN " + Number(n).toLocaleString();
   const mb=S.bookings.filter(b=>{const d=new Date(b.checkIn);return d.getMonth()===S.reportMonth&&d.getFullYear()===S.reportYear;});
   const rev=mb.filter(b=>b.payment==="Paid").reduce((s,b)=>s+(getUnit(b.unitId)?.price||0)*nts(b.checkIn,b.checkOut),0);
+  const partRev=mb.filter(b=>b.payment==="Partial").reduce((s,b)=>s+(getUnit(b.unitId)?.price||0)*nts(b.checkIn,b.checkOut)*.5,0);
+  const grossRev=rev+partRev;
   doc.setFillColor(26,16,64);doc.rect(0,0,210,42,"F");
   doc.setTextColor(196,181,253);doc.setFontSize(22);doc.setFont("helvetica","bold");doc.text("ApartBook",14,18);
   doc.setFontSize(11);doc.setFont("helvetica","normal");doc.text("Monthly Revenue Report",14,28);
-  doc.setFontSize(10);doc.text(`${MN[S.reportMonth]} ${S.reportYear}  ·  ${curProp()?.name||""}`,14,38);
-  doc.setTextColor(120,120,120);doc.setFontSize(9);doc.text(`Generated: ${new Date().toLocaleString()}`,14,52);
+  doc.setFontSize(10);doc.text(`${MN[S.reportMonth]} ${S.reportYear}  |  ${curProp()?.name||""}`,14,38);
+  doc.setTextColor(120,120,120);doc.setFontSize(9);doc.text(`Generated: ${new Date().toLocaleString()}  by ${S.user?.email||""}`,14,52);
   doc.setFontSize(11);doc.setFont("helvetica","bold");doc.setTextColor(40,40,40);doc.text("Summary",14,64);
   doc.autoTable({startY:68,head:[["Metric","Value"]],theme:"grid",
-    body:[["Total Bookings",mb.length],["Confirmed",mb.filter(b=>b.status==="Confirmed").length],
+    body:[
+      ["Total Bookings",mb.length],
+      ["Confirmed",mb.filter(b=>b.status==="Confirmed").length],
       ["Checked-out",mb.filter(b=>b.status==="Checked-out").length],
-      ["Cancelled",mb.filter(b=>b.status==="Cancelled").length],["Revenue",fmt(rev)]],
-    headStyles:{fillColor:[124,58,237],textColor:255},styles:{fontSize:11},
-    columnStyles:{0:{cellWidth:120}}
+      ["Cancelled",mb.filter(b=>b.status==="Cancelled").length],
+      ["Fully Paid Bookings",mb.filter(b=>b.payment==="Paid").length],
+      ["Partial Payments",mb.filter(b=>b.payment==="Partial").length],
+      ["Total Monthly Gross Revenue",pfmt(grossRev)],
+    ],
+    headStyles:{fillColor:[124,58,237],textColor:255,fontStyle:"bold"},
+    styles:{fontSize:11},columnStyles:{0:{cellWidth:130}}
   });
   const y2=doc.lastAutoTable.finalY+10;
-  doc.text("Booking Details",14,y2);
+  doc.setFont("helvetica","bold");doc.setFontSize(11);doc.setTextColor(40,40,40);doc.text("Booking Details",14,y2);
   doc.autoTable({startY:y2+4,theme:"striped",
     head:[["Guest","Unit","Check-in","Check-out","Nts","Status","Pay","Amount"]],
-    body:mb.length?mb.map(b=>[b.guest,getUnit(b.unitId)?.name||"—",b.checkIn,b.checkOut,nts(b.checkIn,b.checkOut)+"",b.status,b.payment,fmt((getUnit(b.unitId)?.price||0)*nts(b.checkIn,b.checkOut))]):
-      [["No bookings this month","","","","","","",""]],
+    body:mb.length?mb.map(b=>[
+      b.guest||"—",
+      getUnit(b.unitId)?.name||"—",
+      b.checkIn,b.checkOut,
+      nts(b.checkIn,b.checkOut)+"",
+      b.status,b.payment,
+      pfmt((getUnit(b.unitId)?.price||0)*nts(b.checkIn,b.checkOut))
+    ]):[["No bookings this month","","","","","","",""]],
     headStyles:{fillColor:[124,58,237],textColor:255,fontSize:9},styles:{fontSize:8}
   });
   const pg=doc.internal.getNumberOfPages();
-  for(let i=1;i<=pg;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(150,150,150);doc.text(`ApartBook · Page ${i}/${pg}`,14,287);}
+  for(let i=1;i<=pg;i++){doc.setPage(i);doc.setFontSize(8);doc.setTextColor(150,150,150);doc.text(`ApartBook  |  ${curProp()?.name||""}  |  Page ${i} of ${pg}`,14,287);}
   doc.save(`ApartBook-${MN[S.reportMonth]}-${S.reportYear}.pdf`);
 };
 
@@ -619,7 +635,16 @@ function renderHeader(){
 // ═══════════════════════════════════════════
 function renderDashboard(){
   const t=tod();const occ=occupied();
-  const rev=S.bookings.filter(b=>b.payment==="Paid"||b.payment==="Partial").reduce((s,b)=>s+(getUnit(b.unitId)?.price||0)*nts(b.checkIn,b.checkOut)*(b.payment==="Paid"?1:.5),0);
+  const now=new Date();
+  const curMonth=now.getMonth();
+  const curYear=now.getFullYear();
+  const monthlyBookings=S.bookings.filter(b=>{
+    const d=new Date(b.checkIn);
+    return d.getMonth()===curMonth&&d.getFullYear()===curYear;
+  });
+  const monthlyRev=monthlyBookings
+    .filter(b=>b.payment==="Paid"||b.payment==="Partial")
+    .reduce((s,b)=>s+(getUnit(b.unitId)?.price||0)*nts(b.checkIn,b.checkOut)*(b.payment==="Paid"?1:.5),0);
   const upcoming=S.bookings.filter(b=>b.checkIn>=t&&b.status==="Confirmed").slice(0,5);
   const checkInsToday=S.bookings.filter(b=>b.checkIn===t&&b.status!=="Cancelled");
   const checkOutsToday=S.bookings.filter(b=>b.checkOut===t&&b.status!=="Cancelled");
@@ -633,7 +658,10 @@ function renderDashboard(){
     <div class="stat" style="border-top:3px solid #22c55e"><div class="stat-l">Occupied units</div><div class="stat-v" style="color:#22c55e">${occ.size}/${units.length}</div></div>
     <div class="stat" style="border-top:3px solid #f59e0b"><div class="stat-l">Check-ins today</div><div class="stat-v" style="color:#f59e0b">${checkInsToday.length}</div></div>
     <div class="stat" style="border-top:3px solid #60a5fa"><div class="stat-l">Check-outs today</div><div class="stat-v" style="color:#60a5fa">${checkOutsToday.length}</div></div>
-    <div class="stat wide" style="border-top:3px solid #9d65f5"><div class="stat-l">Estimated revenue</div><div class="stat-v" style="color:#9d65f5;font-size:18px">${fmt(Math.round(rev))}</div></div>
+    <div class="stat wide" style="border-top:3px solid #9d65f5">
+      <div class="stat-l">Total Monthly Gross Revenue — <span style="color:#9d65f5;font-weight:500">${MN[curMonth]} ${curYear}</span></div>
+      <div class="stat-v" style="color:#9d65f5;font-size:18px">${fmt(Math.round(monthlyRev))}</div>
+    </div>
   </div>
 
   <!-- Units -->
